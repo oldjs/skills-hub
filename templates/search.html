@@ -1,0 +1,87 @@
+{{define "title"}}{{if .Query}}搜索: {{.Query}}{{else}}搜索 Skills{{end}} - Skills Hub{{end}}
+
+{{define "content"}}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-2xl mx-auto mb-8">
+        <form action="/search" method="GET" class="relative">
+            <input type="text" 
+                   name="q" 
+                   id="search-input"
+                   value="{{.Query}}"
+                   placeholder="搜索 skills..." 
+                   class="search-input w-full px-5 py-4 pl-12 text-lg rounded-xl border border-gray-200 focus:border-indigo-500 focus:outline-none bg-white shadow-sm"
+                   autocomplete="off">
+            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
+                搜索
+            </button>
+        </form>
+    </div>
+
+    {{if .Categories}}
+    <div class="mb-8">
+        <h3 class="text-sm font-medium text-gray-500 mb-3">按分类筛选</h3>
+        <div class="flex flex-wrap gap-2">
+            <a href="/search" class="category-tag px-3 py-1.5 rounded-full text-sm {{if not $.Query}}bg-indigo-100 text-indigo-600 border border-indigo-200{{else}}bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200{{end}}">
+                全部
+            </a>
+            {{range .Categories}}
+            <a href="/search?category={{.}}" class="category-tag px-3 py-1.5 rounded-full text-sm bg-gray-100 text-gray-600 border border-gray-200 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600">
+                {{.}}
+            </a>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+
+    <div class="mb-6 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-gray-800">
+            {{if .Query}}搜索结果: "{{.Query}}"{{else if .Category}}{{.Category}}{{else}}所有 Skills{{end}}
+        </h2>
+        <span class="text-gray-400 text-sm">{{len .Skills}} 个结果</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {{range .Skills}}
+        <div class="card-hover bg-white rounded-xl border border-gray-100 p-6 fade-in">
+            <div class="flex items-start justify-between mb-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-puzzle-piece text-indigo-500"></i>
+                </div>
+                {{if .Version}}
+                <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">v{{.Version}}</span>
+                {{end}}
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">{{.DisplayName}}</h3>
+            <p class="text-gray-500 text-sm mb-4 line-clamp-2">{{.Summary}}</p>
+            {{if .Categories}}
+            <div class="flex flex-wrap gap-1 mb-4">
+                {{range split .Categories ","}}
+                <span class="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded">{{.}}</span>
+                {{end}}
+            </div>
+            {{end}}
+            <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                <button onclick="copyInstall('{{.Slug}}')" class="install-btn flex items-center space-x-2 px-3 py-2 bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 rounded-lg text-sm transition">
+                    <i class="fas fa-terminal"></i>
+                    <span>安装</span>
+                </button>
+                <a href="/skill?slug={{.Slug}}" class="text-indigo-500 hover:text-indigo-600 text-sm font-medium">
+                    详情 <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+        {{end}}
+
+        {{if not .Skills}}
+        <div class="col-span-full text-center py-16">
+            <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-folder-open text-gray-300 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-medium text-gray-600 mb-2">未找到匹配的 Skills</h3>
+            <p class="text-gray-400">尝试其他关键词或浏览全部分类</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}

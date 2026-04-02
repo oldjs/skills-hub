@@ -1,0 +1,116 @@
+{{define "title"}}{{if .Skill}}{{.Skill.DisplayName}}{{else}}技能详情{{end}} - Skills Hub{{end}}
+
+{{define "content"}}
+{{if .Skill}}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <nav class="mb-8">
+        <ol class="flex items-center space-x-2 text-sm">
+            <li><a href="/" class="text-gray-500 hover:text-gray-700">首页</a></li>
+            <li class="text-gray-400"><i class="fas fa-chevron-right text-xs"></i></li>
+            <li><a href="/search" class="text-gray-500 hover:text-gray-700">搜索</a></li>
+            <li class="text-gray-400"><i class="fas fa-chevron-right text-xs"></i></li>
+            <li class="text-gray-900 font-medium">{{.Skill.DisplayName}}</li>
+        </ol>
+    </nav>
+
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <div class="p-8 border-b border-gray-100">
+            <div class="flex items-start space-x-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-puzzle-piece text-indigo-500 text-3xl"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center space-x-3 mb-2">
+                        <h1 class="text-2xl font-bold text-gray-900">{{.Skill.DisplayName}}</h1>
+                        {{if .Skill.Version}}
+                        <span class="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded">v{{.Skill.Version}}</span>
+                        {{end}}
+                    </div>
+                    <p class="text-gray-600 mb-4">{{.Skill.Summary}}</p>
+                    {{if .Skill.Categories}}
+                    <div class="flex flex-wrap gap-2">
+                        {{range split .Skill.Categories ","}}
+                        <a href="/search?category={{.}}" class="px-3 py-1 bg-indigo-50 text-indigo-600 text-sm rounded-full hover:bg-indigo-100 transition">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+
+        <div class="p-8 space-y-8">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-terminal text-indigo-500 mr-2"></i>安装命令
+                </h2>
+                <div class="flex items-center space-x-3">
+                    <code class="flex-1 px-4 py-3 bg-gray-900 text-green-400 rounded-lg font-mono text-sm overflow-x-auto">
+                        openclaw skills install {{.Skill.Slug}}
+                    </code>
+                    <button onclick="copyInstall('{{.Skill.Slug}}')" class="px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition flex-shrink-0">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-50 rounded-xl p-6">
+                    <h3 class="text-sm font-medium text-gray-500 mb-3">详细信息</h3>
+                    <dl class="space-y-3">
+                        <div class="flex justify-between">
+                            <dt class="text-gray-600">评分</dt>
+                            <dd class="font-medium text-gray-900">{{printf "%.2f" .Skill.Score}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-gray-600">版本</dt>
+                            <dd class="font-medium text-gray-900">{{.Skill.Version}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-gray-600">最后更新</dt>
+                            <dd class="font-medium text-gray-900">{{.Skill.UpdatedAt.Format "2006-01-02"}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-gray-600">Slug</dt>
+                            <dd class="font-medium text-gray-900 font-mono text-sm">{{.Skill.Slug}}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-6">
+                    <h3 class="text-sm font-medium text-gray-500 mb-3">操作</h3>
+                    <div class="space-y-3">
+                        <a href="{{.Skill.ClawHubURL}}" target="_blank" class="flex items-center justify-between px-4 py-3 bg-white border border-gray-200 rounded-lg hover:border-indigo-200 hover:bg-indigo-50 transition">
+                            <span class="text-gray-700">在 ClawHub 查看</span>
+                            <i class="fas fa-external-link-alt text-gray-400"></i>
+                        </a>
+                        <button onclick="copyInstall('{{.Skill.Slug}}')" class="w-full flex items-center justify-between px-4 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
+                            <span>复制安装命令</span>
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8">
+        <a href="/search" class="inline-flex items-center text-gray-600 hover:text-gray-900 transition">
+            <i class="fas fa-arrow-left mr-2"></i>返回搜索
+        </a>
+    </div>
+</div>
+{{else}}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+    <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-exclamation-triangle text-gray-300 text-2xl"></i>
+    </div>
+    <h2 class="text-xl font-medium text-gray-600 mb-2">技能未找到</h2>
+    <p class="text-gray-400 mb-6">该技能可能已被移除或不存在</p>
+    <a href="/" class="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
+        返回首页
+    </a>
+</div>
+{{end}}
+{{end}}
