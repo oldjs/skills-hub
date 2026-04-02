@@ -3,65 +3,62 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"skills-hub/db"
+	"skills-hub/models"
 )
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	category := r.URL.Query().Get("category")
+	title := "搜索 Skills - Skills Hub"
+	if query != "" && category != "" {
+		title = "搜索: " + query + " / " + category + " - Skills Hub"
+	} else if query != "" {
+		title = "搜索: " + query + " - Skills Hub"
+	} else if category != "" {
+		title = category + " - Skills Hub"
+	}
 
-	if r.Header.Get("Accept") == "application/json" || r.URL.Query().Get("format") == "json" {
+	if strings.Contains(r.Header.Get("Accept"), "application/json") || r.URL.Query().Get("format") == "json" {
 		w.Header().Set("Content-Type", "application/json")
-		
-		var skills interface{}
-		var err error
 
-		if category != "" {
-			skills, err = db.GetSkillsByCategory(category)
-		} else if query != "" {
-			skills, err = db.SearchSkills(query)
-		} else {
-			skills, err = db.GetAllSkills()
-		}
+		skills, err := db.GetFilteredSkills(query, category)
 
 		if err != nil {
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"skills": []interface{}{},
+				"skills": []models.Skill{},
 				"error":  err.Error(),
 			})
 			return
 		}
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"skills": skills,
+			"skills":   skills,
+			"query":    query,
+			"category": category,
 		})
 		return
 	}
 
-	var skills interface{}
-	var err error
-
-	if category != "" {
-		skills, err = db.GetSkillsByCategory(category)
-	} else if query != "" {
-		skills, err = db.SearchSkills(query)
-	} else {
-		skills, err = db.GetAllSkills()
-	}
+	skills, err := db.GetFilteredSkills(query, category)
 
 	if err != nil {
-		skills = []interface{}{}
+		skills = []models.Skill{}
 	}
 
 	categories, _ := db.GetCategories()
 
 	data := PageData{
-		Title:       "搜索: " + query + " - Skills Hub",
-		Skills:      skills,
-		Categories:  categories,
-		Query:       query,
-		CurrentPage: "search",
+		Title:         title,
+		Skills:        skills,
+		Categories:    categories,
+		Query:         query,
+		Category:      category,
+		CurrentPage:   "search",
+		TotalSkills:   len(skills),
+		CategoryCount: len(categories),
 	}
 
 	RenderTemplate(w, "search.html", data)
@@ -69,18 +66,28 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 func SearchAPIHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
-	
-	skills, err := db.SearchSkills(query)
-	if err != nil {
+	if query == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"results": []interface{}{},
+			"skills": []models.Skill{},
 		})
 		return
 	}
 
+	skills, err := db.SearchSkills(query)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"skills": []models.Skill{},
+		})
+		return
+	}
+	if len(skills) > 8 {
+		skills = skills[:8]
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"results": skills,
+		"skills": skills,
 	})
 }

@@ -34,6 +34,10 @@ if (searchInput && suggestionsEl) {
 }
 
 async function fetchSuggestions(query) {
+    if (!suggestionsEl) {
+        return;
+    }
+
     try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&format=json`);
         const data = await response.json();
@@ -106,7 +110,12 @@ function showToast(message) {
 }
 
 async function triggerSync() {
-    const btn = event.target;
+    const source = arguments[0];
+    const btn = source?.currentTarget || source?.target || source;
+    if (!btn || !btn.innerHTML) {
+        return;
+    }
+
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>同步中...';
@@ -118,6 +127,8 @@ async function triggerSync() {
         if (data.status === 'started') {
             showToast('数据同步已启动，请稍后刷新页面');
             setTimeout(() => location.reload(), 3000);
+        } else if (data.status === 'running') {
+            showToast('同步正在进行中，请稍后查看');
         } else {
             showToast('同步失败: ' + (data.message || '未知错误'));
         }

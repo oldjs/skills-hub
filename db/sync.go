@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -93,6 +94,9 @@ func fetchHTTP(url string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
+	}
 
 	return io.ReadAll(resp.Body)
 }
@@ -189,59 +193,14 @@ func containsStr(slice []string, item string) bool {
 }
 
 func GetAllSkills() ([]models.Skill, error) {
-	db := GetDB()
-	rows, err := db.Query(`
+	return querySkills(`
 		SELECT id, slug, display_name, summary, score, updated_at, version, categories
 		FROM skills ORDER BY score DESC, display_name ASC
 	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var skills []models.Skill
-	for rows.Next() {
-		var s models.Skill
-		var updatedAt int64
-		err := rows.Scan(&s.ID, &s.Slug, &s.DisplayName, &s.Summary, &s.Score, &updatedAt, &s.Version, &s.Categories)
-		if err != nil {
-			continue
-		}
-		s.UpdatedAt = time.Unix(updatedAt, 0)
-		s.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", s.Slug)
-		skills = append(skills, s)
-	}
-
-	return skills, nil
 }
 
 func SearchSkills(query string) ([]models.Skill, error) {
-	db := GetDB()
-	rows, err := db.Query(`
-		SELECT id, slug, display_name, summary, score, updated_at, version, categories
-		FROM skills 
-		WHERE display_name LIKE ? OR summary LIKE ? OR categories LIKE ?
-		ORDER BY score DESC LIMIT 50
-	`, "%"+query+"%", "%"+query+"%", "%"+query+"%")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var skills []models.Skill
-	for rows.Next() {
-		var s models.Skill
-		var updatedAt int64
-		err := rows.Scan(&s.ID, &s.Slug, &s.DisplayName, &s.Summary, &s.Score, &updatedAt, &s.Version, &s.Categories)
-		if err != nil {
-			continue
-		}
-		s.UpdatedAt = time.Unix(updatedAt, 0)
-		s.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", s.Slug)
-		skills = append(skills, s)
-	}
-
-	return skills, nil
+	return GetFilteredSkills(query, "")
 }
 
 func GetSkillBySlug(slug string) (*models.Skill, error) {
@@ -267,13 +226,37 @@ func GetSkillBySlug(slug string) (*models.Skill, error) {
 }
 
 func GetSkillsByCategory(category string) ([]models.Skill, error) {
-	db := GetDB()
-	rows, err := db.Query(`
+	return GetFilteredSkills("", category)
+}
+
+func GetFilteredSkills(query, category string) ([]models.Skill, error) {
+	statement := `
 		SELECT id, slug, display_name, summary, score, updated_at, version, categories
-		FROM skills 
-		WHERE categories LIKE ?
-		ORDER BY score DESC
-	`, "%"+category+"%")
+		FROM skills
+	`
+
+	var clauses []string
+	var args []interface{}
+	if query != "" {
+		pattern := "%" + query + "%"
+		clauses = append(clauses, "(display_name LIKE ? OR summary LIKE ? OR categories LIKE ?)")
+		args = append(args, pattern, pattern, pattern)
+	}
+	if category != "" {
+		clauses = append(clauses, "categories LIKE ?")
+		args = append(args, "%"+category+"%")
+	}
+	if len(clauses) > 0 {
+		statement += " WHERE " + strings.Join(clauses, " AND ")
+	}
+	statement += " ORDER BY score DESC, display_name ASC"
+
+	return querySkills(statement, args...)
+}
+
+func querySkills(statement string, args ...interface{}) ([]models.Skill, error) {
+	db := GetDB()
+	rows, err := db.Query(statement, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -290,6 +273,10 @@ func GetSkillsByCategory(category string) ([]models.Skill, error) {
 		s.UpdatedAt = time.Unix(updatedAt, 0)
 		s.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", s.Slug)
 		skills = append(skills, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return skills, nil
@@ -321,6 +308,7 @@ func GetCategories() ([]string, error) {
 	for c := range categorySet {
 		result = append(result, c)
 	}
+	sort.Strings(result)
 	return result, nil
 }
 
@@ -330,17 +318,13 @@ var (
 )
 
 func IsSyncing() bool {
-	return syncMutex.TryLock() && !isSyncing
+	syncMutex.Lock()
+	defer syncMutex.Unlock()
+	return isSyncing
 }
 
 func SetSyncing(status bool) {
-	if status {
-		syncMutex.Lock()
-		isSyncing = true
-		syncMutex.Unlock()
-	} else {
-		syncMutex.Lock()
-		isSyncing = false
-		syncMutex.Unlock()
-	}
+	syncMutex.Lock()
+	isSyncing = status
+	syncMutex.Unlock()
 }

@@ -1,87 +1,146 @@
 {{define "title"}}{{if .Query}}搜索: {{.Query}}{{else}}搜索 Skills{{end}} - Skills Hub{{end}}
 
 {{define "content"}}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="max-w-2xl mx-auto mb-8">
-        <form action="/search" method="GET" class="relative">
-            <input type="text" 
-                   name="q" 
-                   id="search-input"
-                   value="{{.Query}}"
-                   placeholder="搜索 skills..." 
-                   class="search-input w-full px-5 py-4 pl-12 text-lg rounded-xl border border-gray-200 focus:border-indigo-500 focus:outline-none bg-white shadow-sm"
-                   autocomplete="off">
-            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
-                搜索
-            </button>
-        </form>
-    </div>
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+    <section class="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] sm:p-8">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-500 mb-4">
+                    <i class="fas fa-compass text-xs"></i>
+                    <span>搜索与分类浏览</span>
+                </div>
+                <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">
+                    {{if .Query}}“{{.Query}}” 的搜索结果{{else if .Category}}{{.Category}} 分类结果{{else}}浏览全部 Skills{{end}}
+                </h1>
+                <p class="mt-3 text-slate-500 leading-7 max-w-2xl">
+                    支持关键词搜索与分类组合筛选，适合快速定位技能名称、用途摘要和标签。
+                </p>
+            </div>
+            <div class="text-sm text-slate-400">共找到 {{len .Skills}} 个结果</div>
+        </div>
+
+        <div class="mt-8 relative">
+            <form action="/search" method="GET" class="relative">
+                {{if .Category}}
+                <input type="hidden" name="category" value="{{.Category}}">
+                {{end}}
+                <input type="text"
+                       name="q"
+                       id="search-input"
+                       value="{{.Query}}"
+                       placeholder="输入关键词，例如 browser、github、搜索、邮件"
+                       class="search-input w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 pl-12 pr-28 text-base text-slate-900 focus:border-indigo-500 focus:outline-none"
+                       autocomplete="off">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 transition">
+                    搜索
+                </button>
+            </form>
+            <div id="search-suggestions" class="absolute left-0 right-0 mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70 hidden z-10"></div>
+        </div>
+
+        {{if or .Query .Category}}
+        <div class="mt-5 flex flex-wrap gap-2">
+            {{if .Query}}
+            <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm text-slate-600">
+                <i class="fas fa-keyboard text-xs"></i>
+                关键词：{{.Query}}
+            </span>
+            {{end}}
+            {{if .Category}}
+            <span class="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1.5 text-sm text-indigo-600">
+                <i class="fas fa-tag text-xs"></i>
+                分类：{{.Category}}
+            </span>
+            {{end}}
+            <a href="/search" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-sm text-slate-500 hover:border-slate-300 hover:text-slate-700">
+                清空筛选
+            </a>
+        </div>
+        {{end}}
+    </section>
 
     {{if .Categories}}
-    <div class="mb-8">
-        <h3 class="text-sm font-medium text-gray-500 mb-3">按分类筛选</h3>
-        <div class="flex flex-wrap gap-2">
-            <a href="/search" class="category-tag px-3 py-1.5 rounded-full text-sm {{if not $.Query}}bg-indigo-100 text-indigo-600 border border-indigo-200{{else}}bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200{{end}}">
+    <section class="mt-8">
+        <div class="mb-4 flex items-center justify-between gap-4">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-900">分类筛选</h2>
+                <p class="text-sm text-slate-500 mt-1">点击分类后，仍可继续输入关键词缩小范围</p>
+            </div>
+            <a href="/search" class="text-sm font-medium text-slate-500 hover:text-slate-700">重置</a>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            <a href="/search{{if .Query}}?q={{.Query}}{{end}}" class="category-tag rounded-full border px-4 py-2 text-sm {{if not .Category}}border-indigo-200 bg-indigo-50 text-indigo-600{{else}}border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600{{end}}">
                 全部
             </a>
             {{range .Categories}}
-            <a href="/search?category={{.}}" class="category-tag px-3 py-1.5 rounded-full text-sm bg-gray-100 text-gray-600 border border-gray-200 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600">
+            <a href="/search?category={{.}}{{if $.Query}}&q={{$.Query}}{{end}}" class="category-tag rounded-full border px-4 py-2 text-sm {{if eq $.Category .}}border-indigo-200 bg-indigo-50 text-indigo-600{{else}}border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600{{end}}">
                 {{.}}
             </a>
             {{end}}
         </div>
-    </div>
+    </section>
     {{end}}
 
-    <div class="mb-6 flex items-center justify-between">
-        <h2 class="text-xl font-bold text-gray-800">
-            {{if .Query}}搜索结果: "{{.Query}}"{{else if .Category}}{{.Category}}{{else}}所有 Skills{{end}}
-        </h2>
-        <span class="text-gray-400 text-sm">{{len .Skills}} 个结果</span>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {{range .Skills}}
-        <div class="card-hover bg-white rounded-xl border border-gray-100 p-6 fade-in">
-            <div class="flex items-start justify-between mb-4">
-                <div class="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-puzzle-piece text-indigo-500"></i>
+    <section class="mt-10">
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {{range .Skills}}
+            <article class="card-hover fade-in rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_16px_50px_-40px_rgba(15,23,42,0.45)]">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600">
+                            <i class="fas fa-puzzle-piece"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="truncate text-lg font-semibold text-slate-900">{{.DisplayName}}</h3>
+                            <div class="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                                <span class="rounded-full bg-emerald-50 px-2 py-1 text-emerald-600">评分 {{printf "%.1f" .Score}}</span>
+                                <span>{{formatDate .UpdatedAt}}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {{if .Version}}
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-500">v{{.Version}}</span>
+                    {{end}}
                 </div>
-                {{if .Version}}
-                <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">v{{.Version}}</span>
+
+                <p class="line-clamp-2 mt-5 min-h-[3rem] text-sm leading-6 text-slate-600">{{if .Summary}}{{.Summary}}{{else}}暂无摘要描述。{{end}}</p>
+
+                {{if .Categories}}
+                <div class="mt-5 flex flex-wrap gap-2">
+                    {{range categories .Categories}}
+                    <a href="/search?category={{.}}{{if $.Query}}&q={{$.Query}}{{end}}" class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100">
+                        {{.}}
+                    </a>
+                    {{end}}
+                </div>
                 {{end}}
-            </div>
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">{{.DisplayName}}</h3>
-            <p class="text-gray-500 text-sm mb-4 line-clamp-2">{{.Summary}}</p>
-            {{if .Categories}}
-            <div class="flex flex-wrap gap-1 mb-4">
-                {{range split .Categories ","}}
-                <span class="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded">{{.}}</span>
-                {{end}}
-            </div>
+
+                <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                    <button type="button" onclick="copyInstall('{{.Slug}}')" class="install-btn inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700 hover:bg-slate-900 hover:text-white">
+                        <i class="fas fa-terminal text-xs"></i>
+                        <span>复制命令</span>
+                    </button>
+                    <a href="/skill?slug={{.Slug}}" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+                        查看详情 <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </article>
             {{end}}
-            <div class="flex items-center justify-between pt-4 border-t border-gray-100">
-                <button onclick="copyInstall('{{.Slug}}')" class="install-btn flex items-center space-x-2 px-3 py-2 bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 rounded-lg text-sm transition">
-                    <i class="fas fa-terminal"></i>
-                    <span>安装</span>
-                </button>
-                <a href="/skill?slug={{.Slug}}" class="text-indigo-500 hover:text-indigo-600 text-sm font-medium">
-                    详情 <i class="fas fa-arrow-right ml-1"></i>
+
+            {{if not .Skills}}
+            <div class="col-span-full rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
+                <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-300">
+                    <i class="fas fa-folder-open text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-medium text-slate-700 mb-2">未找到匹配的 Skills</h3>
+                <p class="text-slate-500 mb-6">可以尝试减少关键词，或者先切换到其他分类。</p>
+                <a href="/search" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-white hover:bg-slate-800 transition">
+                    返回全部结果
                 </a>
             </div>
+            {{end}}
         </div>
-        {{end}}
-
-        {{if not .Skills}}
-        <div class="col-span-full text-center py-16">
-            <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-folder-open text-gray-300 text-2xl"></i>
-            </div>
-            <h3 class="text-xl font-medium text-gray-600 mb-2">未找到匹配的 Skills</h3>
-            <p class="text-gray-400">尝试其他关键词或浏览全部分类</p>
-        </div>
-        {{end}}
-    </div>
+    </section>
 </div>
 {{end}}

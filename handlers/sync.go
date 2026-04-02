@@ -12,9 +12,19 @@ import (
 func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "error",
 			"message": "Only POST method is allowed",
+		})
+		return
+	}
+
+	if db.IsSyncing() {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "running",
+			"message": "Sync is already in progress",
 		})
 		return
 	}

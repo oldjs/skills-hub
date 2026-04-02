@@ -18,16 +18,23 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		skills = []models.Skill{}
 	}
 
+	featuredSkills := skills
+	if len(featuredSkills) > 12 {
+		featuredSkills = featuredSkills[:12]
+	}
+
 	categories, err := db.GetCategories()
 	if err != nil {
 		categories = []string{}
 	}
 
 	data := PageData{
-		Title:       "Skills Hub - OpenClaw 技能中心",
-		Skills:      skills,
-		Categories:  categories,
-		CurrentPage: "home",
+		Title:         "Skills Hub - OpenClaw 技能中心",
+		Skills:        featuredSkills,
+		Categories:    categories,
+		CurrentPage:   "home",
+		TotalSkills:   len(skills),
+		CategoryCount: len(categories),
 	}
 
 	RenderTemplate(w, "index.html", data)
