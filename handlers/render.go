@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -20,9 +21,14 @@ func InitTemplates(templateDir string) {
 		"split":      strings.Split,
 		"categories": categoryList,
 		"formatDate": formatDate,
+		"maskEmail":  maskEmail,
+		"formatTime": formatTime,
+		"seq":        seq,
+		"parseInt":   parseIntFromStr,
+		"roundRating": roundRating,
 	}
 	basePath := filepath.Join(templateDir, "layout.html")
-	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "admin_tenants.html", "admin_tenant_detail.html"}
+	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
 
 	for _, page := range pages {
 		files := []string{basePath, filepath.Join(templateDir, page)}
@@ -107,8 +113,11 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	target["Categories"] = data.Categories
 	target["Query"] = data.Query
 	target["Category"] = data.Category
+	target["SortBy"] = data.SortBy
 	target["CurrentPage"] = data.CurrentPage
 	target["Skill"] = data.Skill
+	target["Comments"] = data.Comments
+	target["UserRating"] = data.UserRating
 	target["TotalSkills"] = data.TotalSkills
 	target["CategoryCount"] = data.CategoryCount
 	target["Error"] = data.Error
@@ -133,8 +142,11 @@ type PageData struct {
 	Categories    []string
 	Query         string
 	Category      string
+	SortBy        string // 排序方式：score, rating, latest
 	CurrentPage   string
 	Skill         *models.Skill
+	Comments      []models.SkillComment // 评论列表
+	UserRating    int                   // 当前用户的评分
 	TotalSkills   int
 	CategoryCount int
 	Error         string
@@ -162,4 +174,46 @@ func formatDate(t time.Time) string {
 		return "-"
 	}
 	return t.Format("2006-01-02")
+}
+
+// 邮箱脱敏：user@example.com -> u***@example.com
+func maskEmail(email string) string {
+	parts := strings.SplitN(email, "@", 2)
+	if len(parts) != 2 {
+		return "***"
+	}
+	name := parts[0]
+	if len(name) <= 1 {
+		return name + "***@" + parts[1]
+	}
+	return string(name[0]) + "***@" + parts[1]
+}
+
+// 格式化时间带时分
+func formatTime(t time.Time) string {
+	if t.IsZero() {
+		return "-"
+	}
+	return t.Format("2006-01-02 15:04")
+}
+
+// 生成 1~n 的序列，模板里用来渲染星星
+func seq(n int) []int {
+	s := make([]int, n)
+	for i := range s {
+		s[i] = i + 1
+	}
+	return s
+}
+
+// 字符串转 int，模板里用
+func parseIntFromStr(s string) int {
+	var n int
+	fmt.Sscan(s, &n)
+	return n
+}
+
+// 四舍五入评分，返回 int
+func roundRating(f float64) int {
+	return int(f + 0.5)
 }

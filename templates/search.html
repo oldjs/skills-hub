@@ -8,15 +8,18 @@
             <h1 class="text-3xl font-bold text-slate-900 mb-2">探索发现</h1>
             <p class="text-slate-500">在 {{.TotalSkills}} 个技能中寻找你需要的智能体能力</p>
         </div>
-        
+
         <form action="/search" method="GET" class="w-full md:w-96 relative group">
             {{if .Category}}
             <input type="hidden" name="category" value="{{.Category}}">
             {{end}}
+            {{if .SortBy}}
+            <input type="hidden" name="sort" value="{{.SortBy}}">
+            {{end}}
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-search text-slate-400 group-focus-within:text-orange-500 transition-colors"></i>
             </div>
-            <input type="text" name="q" value="{{.Query}}" placeholder="搜索技能名称或用途..." 
+            <input type="text" name="q" value="{{.Query}}" placeholder="搜索技能名称或用途..."
                    class="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-all text-sm shadow-sm"
                    autocomplete="off">
         </form>
@@ -25,23 +28,47 @@
     <!-- Layout: Sidebar + Grid -->
     <div class="flex flex-col lg:flex-row gap-8 items-start">
         <!-- Sidebar: Categories -->
-        <aside class="w-full lg:w-64 flex-shrink-0 lg:sticky lg:top-24 bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">按领域筛选</h3>
-            
-            <a href="/search{{if .Query}}?q={{.Query}}{{end}}" 
-               class="flex items-center justify-between px-3 py-2 rounded-md text-sm mb-1 transition-colors {{if not .Category}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
-                <span>全部领域</span>
-                {{if not .Category}}<i class="fas fa-check text-xs"></i>{{end}}
-            </a>
-            
-            <div class="space-y-1 mt-2">
-                {{range .Categories}}
-                <a href="/search?category={{.}}{{if $.Query}}&q={{$.Query}}{{end}}" 
-                   class="flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors {{if eq $.Category .}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
-                    <span class="truncate pr-2">{{.}}</span>
-                    {{if eq $.Category .}}<i class="fas fa-check text-xs"></i>{{end}}
+        <aside class="w-full lg:w-64 flex-shrink-0 lg:sticky lg:top-24 space-y-4">
+            <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">按领域筛选</h3>
+
+                <a href="/search{{if .Query}}?q={{.Query}}{{end}}{{if .SortBy}}{{if .Query}}&{{else}}?{{end}}sort={{.SortBy}}{{end}}"
+                   class="flex items-center justify-between px-3 py-2 rounded-md text-sm mb-1 transition-colors {{if not .Category}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
+                    <span>全部领域</span>
+                    {{if not .Category}}<i class="fas fa-check text-xs"></i>{{end}}
                 </a>
-                {{end}}
+
+                <div class="space-y-1 mt-2">
+                    {{range .Categories}}
+                    <a href="/search?category={{.}}{{if $.Query}}&q={{$.Query}}{{end}}{{if $.SortBy}}&sort={{$.SortBy}}{{end}}"
+                       class="flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors {{if eq $.Category .}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
+                        <span class="truncate pr-2">{{.}}</span>
+                        {{if eq $.Category .}}<i class="fas fa-check text-xs"></i>{{end}}
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+
+            <!-- 排序方式 -->
+            <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">排序方式</h3>
+                <div class="space-y-1">
+                    <a href="/search?{{if .Query}}q={{.Query}}&{{end}}{{if .Category}}category={{.Category}}&{{end}}sort=score"
+                       class="flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors {{if or (eq .SortBy "score") (eq .SortBy "")}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
+                        <span><i class="fas fa-fire mr-2 text-xs"></i>默认排序</span>
+                        {{if or (eq .SortBy "score") (eq .SortBy "")}}<i class="fas fa-check text-xs"></i>{{end}}
+                    </a>
+                    <a href="/search?{{if .Query}}q={{.Query}}&{{end}}{{if .Category}}category={{.Category}}&{{end}}sort=rating"
+                       class="flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors {{if eq .SortBy "rating"}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
+                        <span><i class="fas fa-star mr-2 text-xs"></i>按评分排序</span>
+                        {{if eq .SortBy "rating"}}<i class="fas fa-check text-xs"></i>{{end}}
+                    </a>
+                    <a href="/search?{{if .Query}}q={{.Query}}&{{end}}{{if .Category}}category={{.Category}}&{{end}}sort=latest"
+                       class="flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors {{if eq .SortBy "latest"}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
+                        <span><i class="fas fa-clock mr-2 text-xs"></i>最新发布</span>
+                        {{if eq .SortBy "latest"}}<i class="fas fa-check text-xs"></i>{{end}}
+                    </a>
+                </div>
             </div>
         </aside>
 
@@ -51,25 +78,25 @@
             {{if or .Query .Category}}
             <div class="flex flex-wrap items-center gap-2 mb-6">
                 <span class="text-sm text-slate-500">过滤条件:</span>
-                
+
                 {{if .Query}}
                 <span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded bg-slate-100 text-sm text-slate-700 font-medium border border-slate-200">
                     关键词: {{.Query}}
-                    <a href="/search{{if .Category}}?category={{.Category}}{{end}}" class="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded transition-colors" title="移除关键词">
+                    <a href="/search{{if .Category}}?category={{.Category}}{{end}}{{if .SortBy}}{{if .Category}}&{{else}}?{{end}}sort={{.SortBy}}{{end}}" class="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded transition-colors" title="移除关键词">
                         <i class="fas fa-times text-xs"></i>
                     </a>
                 </span>
                 {{end}}
-                
+
                 {{if .Category}}
                 <span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded bg-orange-50 text-sm text-orange-600 font-medium border border-orange-100">
                     分类: {{.Category}}
-                    <a href="/search{{if .Query}}?q={{.Query}}{{end}}" class="p-1 text-orange-400 hover:text-orange-500 hover:bg-orange-100 rounded transition-colors" title="移除分类">
+                    <a href="/search{{if .Query}}?q={{.Query}}{{end}}{{if .SortBy}}{{if .Query}}&{{else}}?{{end}}sort={{.SortBy}}{{end}}" class="p-1 text-orange-400 hover:text-orange-500 hover:bg-orange-100 rounded transition-colors" title="移除分类">
                         <i class="fas fa-times text-xs"></i>
                     </a>
                 </span>
                 {{end}}
-                
+
                 <a href="/search" class="text-sm text-orange-500 hover:text-orange-600 ml-2 font-medium">清除全部</a>
             </div>
             {{end}}
@@ -77,7 +104,7 @@
             <!-- Results Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {{range .Skills}}
-                <article class="group bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-orange-200 transition-all duration-200 flex flex-col h-full">
+                <article class="group bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-orange-200 transition-all duration-200 flex flex-col h-full relative">
                     <div class="flex items-start gap-4 mb-3">
                         <div class="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0 group-hover:bg-orange-50 group-hover:text-orange-500 group-hover:border-orange-100 transition-colors">
                             <i class="fas fa-cube"></i>
@@ -87,24 +114,35 @@
                                 <a href="/skill?slug={{.Slug}}" class="before:absolute before:inset-0">{{.DisplayName}}</a>
                             </h3>
                             <div class="mt-0.5 flex flex-wrap items-center gap-2">
+                                <!-- 用户评分星级 -->
+                                {{if gt .RatingCount 0}}
+                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">
+                                    <i class="fas fa-star"></i> {{printf "%.1f" .AvgRating}}
+                                    <span class="text-amber-400">({{.RatingCount}})</span>
+                                </span>
+                                {{else}}
                                 <span class="inline-flex items-center gap-1 text-[11px] font-medium text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">
                                     <i class="fas fa-star"></i> {{printf "%.1f" .Score}}
                                 </span>
+                                {{end}}
                                 {{if .Version}}
                                 <span class="text-[11px] font-mono text-slate-400">v{{.Version}}</span>
+                                {{end}}
+                                {{if eq .Source "upload"}}
+                                <span class="text-[10px] font-medium text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">上传</span>
                                 {{end}}
                             </div>
                         </div>
                     </div>
-                    
+
                     <p class="text-sm text-slate-500 line-clamp-2 mb-4 flex-grow">{{if .Summary}}{{.Summary}}{{else}}暂无描述信息。{{end}}</p>
-                    
+
                     <div class="pt-3 border-t border-slate-100 flex items-center justify-between relative z-10 mt-auto">
                         <div class="flex items-center gap-1 overflow-hidden pr-2">
                             {{range $i, $cat := categories .Categories}}
                                 {{if lt $i 2}}
                                 <span class="text-[10px] uppercase tracking-wider font-medium text-slate-400 truncate">{{$cat}}</span>
-                                {{if eq $i 0}}<span class="text-slate-300 mx-1">•</span>{{end}}
+                                {{if eq $i 0}}<span class="text-slate-300 mx-1">-</span>{{end}}
                                 {{end}}
                             {{end}}
                         </div>

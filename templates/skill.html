@@ -14,11 +14,12 @@
     </nav>
 
     <section class="overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.45)]">
+        <!-- 头部信息 -->
         <div class="relative border-b border-slate-100 px-6 py-8 sm:px-8 sm:py-10">
-            <div class="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-sky-500/10"></div>
+            <div class="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-yellow-500/10"></div>
             <div class="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div class="flex items-start gap-4 sm:gap-6">
-                    <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600 shadow-inner shadow-white/60">
+                    <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-100 to-amber-100 text-orange-600 shadow-inner shadow-white/60">
                         <i class="fas fa-puzzle-piece text-3xl"></i>
                     </div>
                     <div>
@@ -27,12 +28,15 @@
                             {{if .Skill.Version}}
                             <span class="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-500">v{{.Skill.Version}}</span>
                             {{end}}
+                            {{if eq .Skill.Source "upload"}}
+                            <span class="rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-600">用户上传</span>
+                            {{end}}
                         </div>
                         <p class="max-w-3xl text-base leading-8 text-slate-600">{{if .Skill.Summary}}{{.Skill.Summary}}{{else}}这个技能暂时没有提供摘要描述。{{end}}</p>
                         {{if .Skill.Categories}}
                         <div class="mt-5 flex flex-wrap gap-2">
                             {{range categories .Skill.Categories}}
-                            <a href="/search?category={{.}}" class="rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-100">
+                            <a href="/search?category={{.}}" class="rounded-full bg-orange-50 px-3 py-1.5 text-sm font-medium text-orange-600 hover:bg-orange-100">
                                 {{.}}
                             </a>
                             {{end}}
@@ -41,10 +45,24 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm sm:min-w-[260px]">
+                <div class="grid grid-cols-2 gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm sm:min-w-[280px]">
+                    <!-- 用户评分 -->
                     <div class="rounded-2xl bg-white p-4">
-                        <div class="text-slate-400 mb-1">评分</div>
-                        <div class="text-2xl font-semibold text-slate-900">{{printf "%.1f" .Skill.Score}}</div>
+                        <div class="text-slate-400 mb-1">用户评分</div>
+                        <div class="flex items-center gap-2">
+                            <div class="text-2xl font-semibold text-slate-900">{{if gt .Skill.RatingCount 0}}{{printf "%.1f" .Skill.AvgRating}}{{else}}-{{end}}</div>
+                            <div class="text-xs text-slate-400">{{.Skill.RatingCount}} 人</div>
+                        </div>
+                        <div class="mt-1 flex items-center gap-0.5">
+                            {{$rounded := roundRating $.Skill.AvgRating}}
+                            {{range seq 5}}
+                            {{if le . $rounded}}
+                            <i class="fas fa-star text-amber-400 text-xs"></i>
+                            {{else}}
+                            <i class="far fa-star text-slate-300 text-xs"></i>
+                            {{end}}
+                            {{end}}
+                        </div>
                     </div>
                     <div class="rounded-2xl bg-white p-4">
                         <div class="text-slate-400 mb-1">更新</div>
@@ -60,6 +78,7 @@
 
         <div class="grid grid-cols-1 gap-6 px-6 py-8 sm:px-8 lg:grid-cols-[1.35fr_0.85fr]">
             <div class="space-y-6">
+                <!-- 安装命令 -->
                 <section class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
                     <div class="flex items-center justify-between gap-4 mb-4">
                         <div>
@@ -76,6 +95,22 @@
                     </div>
                 </section>
 
+                <!-- SKILL.md 内容渲染 -->
+                {{if .Skill.Content}}
+                <section class="rounded-3xl border border-slate-200 bg-white p-6">
+                    <h2 class="text-lg font-semibold text-slate-900 mb-4">技能文档</h2>
+                    <div id="skill-content" class="prose prose-slate prose-sm max-w-none
+                        prose-headings:text-slate-900 prose-headings:font-semibold
+                        prose-p:text-slate-600 prose-p:leading-7
+                        prose-a:text-orange-500 prose-a:no-underline hover:prose-a:underline
+                        prose-code:text-orange-600 prose-code:bg-orange-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                        prose-pre:bg-slate-900 prose-pre:text-slate-200 prose-pre:rounded-xl
+                        prose-li:text-slate-600
+                        prose-blockquote:border-orange-300 prose-blockquote:text-slate-500">
+                    </div>
+                </section>
+                {{else}}
+                <!-- 没有 SKILL.md 内容时显示概览 -->
                 <section class="rounded-3xl border border-slate-200 bg-white p-6">
                     <h2 class="text-lg font-semibold text-slate-900 mb-4">技能概览</h2>
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -89,20 +124,95 @@
                         </div>
                     </div>
                 </section>
+                {{end}}
+
+                <!-- 评分区域 -->
+                <section class="rounded-3xl border border-slate-200 bg-white p-6" id="rating-section">
+                    <h2 class="text-lg font-semibold text-slate-900 mb-4">为这个 Skill 评分</h2>
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-1" id="star-rating">
+                            {{range seq 5}}
+                            <button type="button" data-score="{{.}}" class="star-btn p-1 text-2xl transition-colors {{if le . $.UserRating}}text-amber-400{{else}}text-slate-300 hover:text-amber-300{{end}}" onclick="submitRating({{$.Skill.ID}}, {{.}})">
+                                <i class="{{if le . $.UserRating}}fas{{else}}far{{end}} fa-star"></i>
+                            </button>
+                            {{end}}
+                        </div>
+                        <div class="text-sm text-slate-500" id="rating-hint">
+                            {{if gt .UserRating 0}}
+                            你给了 {{.UserRating}} 星
+                            {{else}}
+                            点击星星评分
+                            {{end}}
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 评论区 -->
+                <section class="rounded-3xl border border-slate-200 bg-white p-6" id="comments-section">
+                    <h2 class="text-lg font-semibold text-slate-900 mb-4">
+                        评论
+                        {{if .Comments}}<span class="text-sm font-normal text-slate-400 ml-2">{{len .Comments}} 条</span>{{end}}
+                    </h2>
+
+                    <!-- 发表评论 -->
+                    <form action="/api/comment" method="POST" class="mb-6">
+                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                        <input type="hidden" name="skill_id" value="{{.Skill.ID}}">
+                        <input type="hidden" name="slug" value="{{.Skill.Slug}}">
+                        <textarea name="content" rows="3" maxlength="500" placeholder="分享你对这个 Skill 的看法..." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all resize-none"></textarea>
+                        <div class="mt-2 flex items-center justify-between">
+                            <span class="text-xs text-slate-400">最多 500 个字符</span>
+                            <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 transition-colors">
+                                <i class="fas fa-paper-plane text-xs"></i>
+                                发表评论
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- 评论列表 -->
+                    {{if .Comments}}
+                    <div class="space-y-4">
+                        {{range .Comments}}
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600 text-xs font-bold">
+                                        {{if .DisplayName}}{{slice .DisplayName 0 1}}{{else}}?{{end}}
+                                    </div>
+                                    <div>
+                                        <span class="text-sm font-medium text-slate-700">{{if .DisplayName}}{{.DisplayName}}{{else}}匿名用户{{end}}</span>
+                                        <span class="text-xs text-slate-400 ml-2">{{maskEmail .Email}}</span>
+                                    </div>
+                                </div>
+                                <span class="text-xs text-slate-400">{{formatTime .CreatedAt}}</span>
+                            </div>
+                            <p class="text-sm text-slate-600 leading-6 whitespace-pre-wrap">{{.Content}}</p>
+                        </div>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <div class="text-center py-8">
+                        <div class="text-slate-300 mb-2"><i class="far fa-comment-dots text-3xl"></i></div>
+                        <p class="text-sm text-slate-400">暂无评论，来说说你的看法吧</p>
+                    </div>
+                    {{end}}
+                </section>
             </div>
 
             <aside class="space-y-6">
                 <section class="rounded-3xl border border-slate-200 bg-white p-6">
                     <h2 class="text-lg font-semibold text-slate-900 mb-4">快速操作</h2>
                     <div class="space-y-3">
-                        <button type="button" onclick="copyInstall('{{.Skill.Slug}}')" class="flex w-full items-center justify-between rounded-2xl bg-indigo-500 px-4 py-3 text-white hover:bg-indigo-600 transition">
+                        <button type="button" onclick="copyInstall('{{.Skill.Slug}}')" class="flex w-full items-center justify-between rounded-2xl bg-orange-500 px-4 py-3 text-white hover:bg-orange-600 transition">
                             <span>复制安装命令</span>
                             <i class="fas fa-copy text-sm"></i>
                         </button>
-                        <a href="{{.Skill.ClawHubURL}}" target="_blank" class="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 transition">
+                        {{if .Skill.ClawHubURL}}
+                        <a href="{{.Skill.ClawHubURL}}" target="_blank" class="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-slate-700 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition">
                             <span>在 ClawHub 打开</span>
                             <i class="fas fa-arrow-up-right-from-square text-sm"></i>
                         </a>
+                        {{end}}
                         <a href="/search{{if .Skill.Categories}}?category={{index (categories .Skill.Categories) 0}}{{end}}" class="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition">
                             <span>浏览相似分类</span>
                             <i class="fas fa-arrow-right text-sm"></i>
@@ -126,8 +236,18 @@
                             <dd class="text-right font-medium text-slate-900">{{formatDate .Skill.UpdatedAt}}</dd>
                         </div>
                         <div class="flex items-center justify-between gap-4">
-                            <dt class="text-slate-500">评分</dt>
+                            <dt class="text-slate-500">来源</dt>
+                            <dd class="text-right font-medium text-slate-900">{{if eq .Skill.Source "upload"}}用户上传{{else}}ClawHub{{end}}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-slate-500">数据源评分</dt>
                             <dd class="text-right font-medium text-slate-900">{{printf "%.2f" .Skill.Score}}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-slate-500">用户评分</dt>
+                            <dd class="text-right font-medium text-slate-900">
+                                {{if gt .Skill.RatingCount 0}}{{printf "%.1f" .Skill.AvgRating}} ({{.Skill.RatingCount}} 人){{else}}-{{end}}
+                            </dd>
                         </div>
                     </dl>
                 </section>
@@ -142,6 +262,77 @@
         </a>
     </div>
 </div>
+
+<!-- Markdown 渲染 -->
+{{if .Skill.Content}}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+(function() {
+    var raw = {{.Skill.Content}};
+    var container = document.getElementById('skill-content');
+    if (container && raw) {
+        // 去掉 frontmatter
+        var content = raw;
+        if (content.trim().startsWith('---')) {
+            var parts = content.trim().split('---');
+            if (parts.length >= 3) {
+                content = parts.slice(2).join('---');
+            }
+        }
+        container.innerHTML = marked.parse(content);
+    }
+})();
+</script>
+{{end}}
+
+<!-- 评分交互 -->
+<script>
+var csrfToken = '{{.CSRFToken}}';
+
+function submitRating(skillId, score) {
+    var formData = new FormData();
+    formData.append('skill_id', skillId);
+    formData.append('score', score);
+    formData.append('csrf_token', csrfToken);
+
+    fetch('/api/rate', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+        if (data.success) {
+            // 更新星星显示
+            var buttons = document.querySelectorAll('.star-btn');
+            buttons.forEach(function(btn) {
+                var btnScore = parseInt(btn.getAttribute('data-score'));
+                var icon = btn.querySelector('i');
+                if (btnScore <= data.userScore) {
+                    btn.classList.remove('text-slate-300');
+                    btn.classList.add('text-amber-400');
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                } else {
+                    btn.classList.remove('text-amber-400');
+                    btn.classList.add('text-slate-300');
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                }
+            });
+            // 更新提示文字
+            var hint = document.getElementById('rating-hint');
+            if (hint) {
+                hint.textContent = '你给了 ' + data.userScore + ' 星';
+            }
+            showToast('评分成功');
+        }
+    })
+    .catch(function() {
+        showToast('评分失败，请重试');
+    });
+}
+</script>
+
 {{else}}
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
     <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -149,7 +340,7 @@
     </div>
     <h2 class="text-xl font-medium text-gray-600 mb-2">技能未找到</h2>
     <p class="text-gray-400 mb-6">该技能可能已被移除或不存在</p>
-    <a href="/" class="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
+    <a href="/" class="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
         返回首页
     </a>
 </div>

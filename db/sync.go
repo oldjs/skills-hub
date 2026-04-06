@@ -163,6 +163,11 @@ func logSync(tenantID int64, count int, keywords, status, message string) error 
 	return err
 }
 
+// CategorizeByText 根据文本内容自动分类，上传时也会用到
+func CategorizeByText(name, summary string) string {
+	return categorizeSkill(name, summary)
+}
+
 func categorizeSkill(name, summary string) string {
 	text := strings.ToLower(name + " " + summary)
 
@@ -218,25 +223,25 @@ func containsStr(slice []string, item string) bool {
 
 func GetAllSkills(tenantID int64) ([]models.Skill, error) {
 	return querySkills(`
-		SELECT id, tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, source
+		SELECT id, tenant_id, slug, display_name, summary, content, score, source_updated_at, version, categories, source
 		FROM skills WHERE tenant_id = ?
 		ORDER BY score DESC, display_name ASC
 	`, tenantID)
 }
 
 func SearchSkills(tenantID int64, query string) ([]models.Skill, error) {
-	return GetFilteredSkills(tenantID, query, "")
+	return GetFilteredSkills(tenantID, query, "", "")
 }
 
 func GetSkillBySlug(tenantID int64, slug string) (*models.Skill, error) {
 	row := GetDB().QueryRow(`
-		SELECT id, tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, source
+		SELECT id, tenant_id, slug, display_name, summary, content, score, source_updated_at, version, categories, source
 		FROM skills WHERE tenant_id = ? AND slug = ?
 	`, tenantID, slug)
 
 	var skill models.Skill
 	var updatedAt int64
-	if err := row.Scan(&skill.ID, &skill.TenantID, &skill.Slug, &skill.DisplayName, &skill.Summary, &skill.Score, &updatedAt, &skill.Version, &skill.Categories, &skill.Source); err != nil {
+	if err := row.Scan(&skill.ID, &skill.TenantID, &skill.Slug, &skill.DisplayName, &skill.Summary, &skill.Content, &skill.Score, &updatedAt, &skill.Version, &skill.Categories, &skill.Source); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -247,26 +252,65 @@ func GetSkillBySlug(tenantID int64, slug string) (*models.Skill, error) {
 	return &skill, nil
 }
 
-func GetFilteredSkills(tenantID int64, query, category string) ([]models.Skill, error) {
+// sortBy: "score"(默认), "rating", "latest"
+func GetFilteredSkills(tenantID int64, query, category, sortBy string) ([]models.Skill, error) {
+	// 基础查询，左联评分表拿用户评分均值
 	statement := `
-		SELECT id, tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, source
-		FROM skills
-		WHERE tenant_id = ?
+		SELECT s.id, s.tenant_id, s.slug, s.display_name, s.summary, s.content, s.score,
+			   s.source_updated_at, s.version, s.categories, s.source,
+			   COALESCE(AVG(r.score), 0) as avg_rating, COUNT(r.id) as rating_count
+		FROM skills s
+		LEFT JOIN skill_ratings r ON r.skill_id = s.id AND r.tenant_id = s.tenant_id
+		WHERE s.tenant_id = ?
 	`
 	args := []interface{}{tenantID}
 
 	if query != "" {
 		pattern := "%" + query + "%"
-		statement += ` AND (display_name LIKE ? OR summary LIKE ? OR categories LIKE ?)`
+		statement += ` AND (s.display_name LIKE ? OR s.summary LIKE ? OR s.categories LIKE ?)`
 		args = append(args, pattern, pattern, pattern)
 	}
 	if category != "" {
-		statement += ` AND categories LIKE ?`
+		statement += ` AND s.categories LIKE ?`
 		args = append(args, "%"+category+"%")
 	}
 
-	statement += ` ORDER BY score DESC, display_name ASC`
-	return querySkills(statement, args...)
+	statement += ` GROUP BY s.id`
+
+	// 排序方式
+	switch sortBy {
+	case "rating":
+		statement += ` ORDER BY avg_rating DESC, s.display_name ASC`
+	case "latest":
+		statement += ` ORDER BY s.created_at DESC, s.display_name ASC`
+	default:
+		statement += ` ORDER BY s.score DESC, s.display_name ASC`
+	}
+
+	return querySkillsWithRating(statement, args...)
+}
+
+// 带评分统计的查询
+func querySkillsWithRating(statement string, args ...interface{}) ([]models.Skill, error) {
+	rows, err := GetDB().Query(statement, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var skills []models.Skill
+	for rows.Next() {
+		var skill models.Skill
+		var updatedAt int64
+		if err := rows.Scan(&skill.ID, &skill.TenantID, &skill.Slug, &skill.DisplayName, &skill.Summary, &skill.Content, &skill.Score, &updatedAt, &skill.Version, &skill.Categories, &skill.Source, &skill.AvgRating, &skill.RatingCount); err != nil {
+			return nil, err
+		}
+		skill.UpdatedAt = time.Unix(updatedAt, 0)
+		skill.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", skill.Slug)
+		skills = append(skills, skill)
+	}
+
+	return skills, rows.Err()
 }
 
 func querySkills(statement string, args ...interface{}) ([]models.Skill, error) {
@@ -280,7 +324,7 @@ func querySkills(statement string, args ...interface{}) ([]models.Skill, error) 
 	for rows.Next() {
 		var skill models.Skill
 		var updatedAt int64
-		if err := rows.Scan(&skill.ID, &skill.TenantID, &skill.Slug, &skill.DisplayName, &skill.Summary, &skill.Score, &updatedAt, &skill.Version, &skill.Categories, &skill.Source); err != nil {
+		if err := rows.Scan(&skill.ID, &skill.TenantID, &skill.Slug, &skill.DisplayName, &skill.Summary, &skill.Content, &skill.Score, &updatedAt, &skill.Version, &skill.Categories, &skill.Source); err != nil {
 			return nil, err
 		}
 		skill.UpdatedAt = time.Unix(updatedAt, 0)

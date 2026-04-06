@@ -35,6 +35,10 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateAddContentColumn(); err != nil {
+			return
+		}
+
 		if err = createIndexes(); err != nil {
 			return
 		}
@@ -134,6 +138,31 @@ func createCoreTables() error {
 			message TEXT NOT NULL DEFAULT '',
 			FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 		)`,
+		// 评分表，每个用户每个skill只能评一次
+		`CREATE TABLE IF NOT EXISTS skill_ratings (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			tenant_id INTEGER NOT NULL,
+			skill_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			score INTEGER NOT NULL CHECK (score >= 1 AND score <= 5),
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE (tenant_id, skill_id, user_id),
+			FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+			FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		// 评论表
+		`CREATE TABLE IF NOT EXISTS skill_comments (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			tenant_id INTEGER NOT NULL,
+			skill_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			content TEXT NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+			FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
 	}
 
 	for _, statement := range statements {
@@ -158,6 +187,12 @@ func createIndexes() error {
 		`CREATE INDEX IF NOT EXISTS idx_skills_tenant_score_name ON skills(tenant_id, score DESC, display_name ASC)`,
 		`CREATE INDEX IF NOT EXISTS idx_skills_tenant_categories ON skills(tenant_id, categories)`,
 		`CREATE INDEX IF NOT EXISTS idx_sync_log_tenant_synced_at ON sync_log(tenant_id, synced_at DESC)`,
+		// 评分表索引
+		`CREATE INDEX IF NOT EXISTS idx_skill_ratings_skill ON skill_ratings(tenant_id, skill_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_skill_ratings_user ON skill_ratings(user_id)`,
+		// 评论表索引
+		`CREATE INDEX IF NOT EXISTS idx_skill_comments_skill ON skill_comments(tenant_id, skill_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_skill_comments_created ON skill_comments(skill_id, created_at DESC)`,
 	}
 
 	for _, statement := range statements {
@@ -311,6 +346,23 @@ func tableHasColumn(tableName, columnName string) (bool, error) {
 	}
 
 	return false, rows.Err()
+}
+
+// 给 skills 表加 content 字段，存 SKILL.md 内容
+func migrateAddContentColumn() error {
+	hasContent, err := tableHasColumn("skills", "content")
+	if err != nil {
+		return err
+	}
+	if hasContent {
+		return nil
+	}
+
+	_, err = database.Exec(`ALTER TABLE skills ADD COLUMN content TEXT NOT NULL DEFAULT ''`)
+	if err != nil {
+		log.Printf("添加 content 列失败（可能已存在）: %v", err)
+	}
+	return nil
 }
 
 func GetDB() *sql.DB {

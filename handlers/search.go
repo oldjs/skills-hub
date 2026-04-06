@@ -18,6 +18,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query().Get("q")
 	category := r.URL.Query().Get("category")
+	sortBy := r.URL.Query().Get("sort") // score, rating, latest
 	title := "搜索 Skills - Skills Hub"
 	if query != "" && category != "" {
 		title = "搜索: " + query + " / " + category + " - Skills Hub"
@@ -30,7 +31,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.Header.Get("Accept"), "application/json") || r.URL.Query().Get("format") == "json" {
 		w.Header().Set("Content-Type", "application/json")
 
-		skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category)
+		skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category, sortBy)
 
 		if err != nil {
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -48,7 +49,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category)
+	skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category, sortBy)
 
 	if err != nil {
 		skills = []models.Skill{}
@@ -62,6 +63,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		Categories:    categories,
 		Query:         query,
 		Category:      category,
+		SortBy:        sortBy,
 		CurrentPage:   "search",
 		TotalSkills:   len(skills),
 		CategoryCount: len(categories),

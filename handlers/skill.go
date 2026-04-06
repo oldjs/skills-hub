@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"skills-hub/db"
+	"skills-hub/models"
 )
 
 func SkillHandler(w http.ResponseWriter, r *http.Request) {
@@ -25,6 +26,20 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 拉评分统计
+	avg, count, _ := db.GetSkillRatingStats(sess.CurrentTenantID, skill.ID)
+	skill.AvgRating = avg
+	skill.RatingCount = count
+
+	// 当前用户的评分
+	userRating, _ := db.GetUserRating(sess.CurrentTenantID, skill.ID, sess.UserID)
+
+	// 拉评论列表
+	comments, _ := db.GetSkillComments(sess.CurrentTenantID, skill.ID)
+	if comments == nil {
+		comments = []models.SkillComment{}
+	}
+
 	categories, _ := db.GetCategories(sess.CurrentTenantID)
 
 	data := PageData{
@@ -32,6 +47,8 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		Skill:       skill,
 		Categories:  categories,
 		CurrentPage: "skill",
+		Comments:    comments,
+		UserRating:  userRating,
 	}
 
 	RenderTemplate(w, r, "skill.html", data)

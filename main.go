@@ -77,6 +77,9 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/", handlers.RequireAuth(handlers.HomeHandler))
 	mux.HandleFunc("/search", handlers.RequireAuth(handlers.SearchHandler))
 	mux.HandleFunc("/skill", handlers.RequireAuth(handlers.SkillHandler))
+	mux.HandleFunc("/upload", handlers.RequireAuth(handlers.UploadHandler))
+	mux.HandleFunc("/api/rate", handlers.RequireAuth(handlers.RateSkillHandler))
+	mux.HandleFunc("/api/comment", handlers.RequireAuth(handlers.CommentSkillHandler))
 
 	mux.HandleFunc("/admin", handlers.RequirePlatformAdmin(handlers.AdminTenantsHandler))
 	mux.HandleFunc("/admin/tenant", handlers.RequirePlatformAdmin(handlers.AdminTenantDetailHandler))
