@@ -109,38 +109,6 @@ function showToast(message) {
     }, 2000);
 }
 
-async function triggerSync() {
-    const source = arguments[0];
-    const btn = source?.currentTarget || source?.target || source;
-    if (!btn || !btn.innerHTML) {
-        return;
-    }
-
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>同步中...';
-    
-    try {
-        const response = await fetch('/sync', { method: 'POST' });
-        const data = await response.json();
-        
-        if (data.status === 'started') {
-            showToast('数据同步已启动，请稍后刷新页面');
-            setTimeout(() => location.reload(), 3000);
-        } else if (data.status === 'running') {
-            showToast('同步正在进行中，请稍后查看');
-        } else {
-            showToast('同步失败: ' + (data.message || '未知错误'));
-        }
-    } catch (err) {
-        showToast('同步请求失败');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    }
-}
-
 if (typeof window !== 'undefined') {
     window.copyInstall = copyInstall;
-    window.triggerSync = triggerSync;
 }

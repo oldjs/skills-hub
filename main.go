@@ -69,9 +69,7 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/", handlers.HomeHandler)
 	mux.HandleFunc("/search", handlers.SearchHandler)
 	mux.HandleFunc("/skill", handlers.SkillHandler)
-	mux.HandleFunc("/sync", handlers.SyncHandler)
 	mux.HandleFunc("/api/search", handlers.SearchAPIHandler)
-	mux.HandleFunc("/api/sync/status", handlers.SyncStatusHandler)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 }
 
