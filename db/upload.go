@@ -5,10 +5,18 @@ import (
 	"time"
 
 	"skills-hub/models"
+	"skills-hub/security"
 )
 
 // 保存用户上传的 skill，来源标记为 upload
 func SaveUploadedSkill(tenantID int64, slug, displayName, summary, content, version, categories string) (*models.Skill, error) {
+	// 上传包里的文本同样不可信，入库前先转义。
+	displayName = security.EscapePlainText(displayName)
+	summary = security.EscapePlainText(summary)
+	content = security.EscapeMarkdownSource(content)
+	version = security.EscapePlainText(version)
+	categories = security.EscapePlainText(categories)
+
 	// 先看有没有同 slug 的
 	existing, err := GetSkillBySlug(tenantID, slug)
 	if err != nil {
@@ -36,11 +44,11 @@ func SaveUploadedSkill(tenantID int64, slug, displayName, summary, content, vers
 		ID:          skillID,
 		TenantID:    tenantID,
 		Slug:        slug,
-		DisplayName: displayName,
-		Summary:     summary,
+		DisplayName: security.DecodeStoredText(displayName),
+		Summary:     security.DecodeStoredText(summary),
 		Content:     content,
-		Version:     version,
-		Categories:  categories,
+		Version:     security.DecodeStoredText(version),
+		Categories:  security.DecodeStoredText(categories),
 		Source:      "upload",
 		UpdatedAt:   now,
 	}, nil

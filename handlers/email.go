@@ -19,7 +19,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var emailRegex = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
+// 邮箱这层收紧一点，直接把常见的 HTML 特殊字符挡在门外。
+var emailRegex = regexp.MustCompile(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`)
 
 const (
 	maxVerificationFailures = 5

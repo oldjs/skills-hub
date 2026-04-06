@@ -2,10 +2,14 @@ package db
 
 import (
 	"skills-hub/models"
+	"skills-hub/security"
 )
 
 // 添加评论
 func AddComment(tenantID, skillID, userID int64, content string) error {
+	// 评论按 Markdown 源入库，但先把原始 HTML 转义掉。
+	content = security.EscapeMarkdownSource(content)
+
 	_, err := GetDB().Exec(`
 		INSERT INTO skill_comments (tenant_id, skill_id, user_id, content)
 		VALUES (?, ?, ?, ?)
@@ -34,6 +38,7 @@ func GetSkillComments(tenantID, skillID int64) ([]models.SkillComment, error) {
 		if err := rows.Scan(&c.ID, &c.TenantID, &c.SkillID, &c.UserID, &c.Content, &c.CreatedAt, &c.Email, &c.DisplayName); err != nil {
 			return nil, err
 		}
+		decodeCommentForDisplay(&c)
 		comments = append(comments, c)
 	}
 	return comments, rows.Err()

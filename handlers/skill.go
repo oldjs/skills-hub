@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"skills-hub/db"
 	"skills-hub/models"
+	"skills-hub/security"
 )
 
 func SkillHandler(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +40,24 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	comments, _ := db.GetSkillComments(sess.CurrentTenantID, skill.ID)
 	if comments == nil {
 		comments = []models.SkillComment{}
+	}
+	for i := range comments {
+		// 评论展示统一走后端 Markdown 渲染，模板里不再拼原始内容。
+		rendered, err := security.RenderCommentMarkdown(comments[i].Content)
+		if err != nil {
+			log.Printf("comment markdown render failed: %v", err)
+			continue
+		}
+		comments[i].ContentHTML = rendered
+	}
+	if skill.Content != "" {
+		// SKILL.md 详情页也改成后端渲染，顺手把旧数据一起兜底清洗。
+		rendered, err := security.RenderSkillMarkdown(skill.Content)
+		if err != nil {
+			log.Printf("skill markdown render failed: %v", err)
+		} else {
+			skill.ContentHTML = rendered
+		}
 	}
 
 	categories, _ := db.GetCategories(sess.CurrentTenantID)

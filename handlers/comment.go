@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
 	"skills-hub/db"
+	"skills-hub/security"
 )
 
 // POST 提交评论
@@ -31,7 +34,7 @@ func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 	slug := r.FormValue("slug")
 	if !validateCaptcha(r, captchaInput) {
 		// 验证码错误，带错误信息跳回详情页
-		http.Redirect(w, r, "/skill?slug="+slug+"&error=captcha", http.StatusSeeOther)
+		http.Redirect(w, r, "/skill?slug="+url.QueryEscape(slug)+"&error=captcha", http.StatusSeeOther)
 		return
 	}
 
@@ -58,5 +61,34 @@ func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 提交后跳回详情页
-	http.Redirect(w, r, "/skill?slug="+slug, http.StatusSeeOther)
+	http.Redirect(w, r, "/skill?slug="+url.QueryEscape(slug), http.StatusSeeOther)
+}
+
+// 评论编辑器的预览直接走后端渲染，前端和最终展示不会跑偏。
+func MarkdownPreviewHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !ValidateCSRFToken(r) {
+		http.Error(w, "无效的请求", http.StatusForbidden)
+		return
+	}
+
+	content := strings.TrimSpace(r.FormValue("content"))
+	if len([]rune(content)) > 500 {
+		http.Error(w, "评论内容不能超过 500 个字符", http.StatusBadRequest)
+		return
+	}
+
+	rendered, err := security.RenderCommentMarkdown(content)
+	if err != nil {
+		http.Error(w, "预览生成失败", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"html": string(rendered),
+	})
 }

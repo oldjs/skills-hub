@@ -5,9 +5,12 @@ import (
 	"time"
 
 	"skills-hub/models"
+	"skills-hub/security"
 )
 
 func GetUserByEmail(email string) (*models.User, error) {
+	email = security.EscapePlainText(email)
+
 	row := GetDB().QueryRow(`
 		SELECT id, email, display_name, status, is_platform_admin, last_tenant_id, last_login_at, created_at, updated_at
 		FROM users WHERE email = ?
@@ -31,11 +34,16 @@ func GetUserByEmail(email string) (*models.User, error) {
 	if lastLoginAt.Valid {
 		user.LastLoginAt = &lastLoginAt.Time
 	}
+	decodeUserForDisplay(&user)
 
 	return &user, nil
 }
 
 func CreateUser(email, displayName string, isPlatformAdmin bool) (*models.User, error) {
+	// 注册信息后面会反复回显，这里先收干净。
+	email = security.EscapePlainText(email)
+	displayName = security.EscapePlainText(displayName)
+
 	result, err := GetDB().Exec(`
 		INSERT INTO users (email, display_name, is_platform_admin)
 		VALUES (?, ?, ?)
@@ -76,6 +84,7 @@ func GetUserByID(userID int64) (*models.User, error) {
 	if lastLoginAt.Valid {
 		user.LastLoginAt = &lastLoginAt.Time
 	}
+	decodeUserForDisplay(&user)
 
 	return &user, nil
 }

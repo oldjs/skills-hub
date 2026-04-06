@@ -80,6 +80,7 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/upload", handlers.RequireAuth(handlers.UploadHandler))
 	mux.HandleFunc("/api/rate", handlers.RequireAuth(handlers.RateSkillHandler))
 	mux.HandleFunc("/api/comment", handlers.RequireAuth(handlers.CommentSkillHandler))
+	mux.HandleFunc("/api/markdown/preview", handlers.RequireAuth(handlers.MarkdownPreviewHandler))
 
 	mux.HandleFunc("/admin", handlers.RequirePlatformAdmin(handlers.AdminTenantsHandler))
 	mux.HandleFunc("/admin/tenant", handlers.RequirePlatformAdmin(handlers.AdminTenantDetailHandler))

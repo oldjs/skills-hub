@@ -18,13 +18,13 @@ var templates map[string]*template.Template
 func InitTemplates(templateDir string) {
 	templates = make(map[string]*template.Template)
 	funcMap := template.FuncMap{
-		"split":      strings.Split,
-		"categories": categoryList,
-		"formatDate": formatDate,
-		"maskEmail":  maskEmail,
-		"formatTime": formatTime,
-		"seq":        seq,
-		"parseInt":   parseIntFromStr,
+		"split":       strings.Split,
+		"categories":  categoryList,
+		"formatDate":  formatDate,
+		"maskEmail":   maskEmail,
+		"formatTime":  formatTime,
+		"seq":         seq,
+		"parseInt":    parseIntFromStr,
 		"roundRating": roundRating,
 	}
 	basePath := filepath.Join(templateDir, "layout.html")

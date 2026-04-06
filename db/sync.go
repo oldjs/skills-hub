@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"skills-hub/models"
+	"skills-hub/security"
 )
 
 var ClawHubBaseURL = "https://wry-manatee-359.convex.site/api/search"
@@ -146,7 +147,14 @@ func saveSkills(tenantID int64, skills []models.Skill) int {
 
 	count := 0
 	for _, skill := range skills {
-		if _, err := stmt.Exec(tenantID, skill.Slug, skill.DisplayName, skill.Summary, skill.Score, skill.UpdatedAt.Unix(), skill.Version, skill.Categories, skill.Source); err == nil {
+		// 第三方同步回来的字段也按不可信输入处理。
+		displayName := security.EscapePlainText(skill.DisplayName)
+		summary := security.EscapePlainText(skill.Summary)
+		version := security.EscapePlainText(skill.Version)
+		categories := security.EscapePlainText(skill.Categories)
+		source := security.EscapePlainText(skill.Source)
+
+		if _, err := stmt.Exec(tenantID, skill.Slug, displayName, summary, skill.Score, skill.UpdatedAt.Unix(), version, categories, source); err == nil {
 			count++
 		}
 	}
@@ -249,6 +257,7 @@ func GetSkillBySlug(tenantID int64, slug string) (*models.Skill, error) {
 	}
 	skill.UpdatedAt = time.Unix(updatedAt, 0)
 	skill.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", skill.Slug)
+	decodeSkillForDisplay(&skill)
 	return &skill, nil
 }
 
@@ -307,6 +316,7 @@ func querySkillsWithRating(statement string, args ...interface{}) ([]models.Skil
 		}
 		skill.UpdatedAt = time.Unix(updatedAt, 0)
 		skill.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", skill.Slug)
+		decodeSkillForDisplay(&skill)
 		skills = append(skills, skill)
 	}
 
@@ -329,6 +339,7 @@ func querySkills(statement string, args ...interface{}) ([]models.Skill, error) 
 		}
 		skill.UpdatedAt = time.Unix(updatedAt, 0)
 		skill.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", skill.Slug)
+		decodeSkillForDisplay(&skill)
 		skills = append(skills, skill)
 	}
 
@@ -349,7 +360,7 @@ func GetCategories(tenantID int64) ([]string, error) {
 			return nil, err
 		}
 		for _, category := range strings.Split(categories, ",") {
-			category = strings.TrimSpace(category)
+			category = strings.TrimSpace(security.DecodeStoredText(category))
 			if category != "" {
 				set[category] = true
 			}

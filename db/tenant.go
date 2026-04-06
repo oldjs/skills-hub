@@ -8,9 +8,15 @@ import (
 	"time"
 
 	"skills-hub/models"
+	"skills-hub/security"
 )
 
 func CreateTenant(slug, name, description string, autoSyncEnabled bool) (*models.Tenant, error) {
+	// 租户信息在后台和头部切换器都会展示，入库前先转义。
+	slug = security.EscapePlainText(slug)
+	name = security.EscapePlainText(name)
+	description = security.EscapePlainText(description)
+
 	result, err := GetDB().Exec(`
 		INSERT INTO tenants (slug, name, description, auto_sync_enabled)
 		VALUES (?, ?, ?, ?)
@@ -94,6 +100,7 @@ func GetTenantByID(tenantID int64) (*models.Tenant, error) {
 		return nil, err
 	}
 	tenant.AutoSyncEnabled = autoSyncEnabled == 1
+	decodeTenantForDisplay(&tenant)
 	return &tenant, nil
 }
 
@@ -115,6 +122,7 @@ func ListTenants() ([]models.Tenant, error) {
 			return nil, err
 		}
 		tenant.AutoSyncEnabled = autoSyncEnabled == 1
+		decodeTenantForDisplay(&tenant)
 		tenants = append(tenants, tenant)
 	}
 
@@ -140,6 +148,7 @@ func ListUserTenants(userID int64) ([]models.UserTenant, error) {
 		if err := rows.Scan(&item.TenantID, &item.TenantSlug, &item.TenantName, &item.TenantStatus, &item.TenantRole, &item.MembershipStatus); err != nil {
 			return nil, err
 		}
+		decodeUserTenantForDisplay(&item)
 		tenants = append(tenants, item)
 	}
 
@@ -161,6 +170,7 @@ func GetUserTenant(userID, tenantID int64) (*models.UserTenant, error) {
 		}
 		return nil, err
 	}
+	decodeUserTenantForDisplay(&item)
 	return &item, nil
 }
 
@@ -190,6 +200,8 @@ func PickActiveTenant(userID int64, lastTenantID *int64) (*models.UserTenant, er
 }
 
 func AddTenantMember(tenantID, userID int64, role string) (*models.TenantMember, error) {
+	role = security.EscapePlainText(role)
+
 	_, err := GetDB().Exec(`
 		INSERT INTO tenant_members (tenant_id, user_id, role, status)
 		VALUES (?, ?, ?, 'active')
@@ -217,6 +229,7 @@ func GetTenantMember(tenantID, userID int64) (*models.TenantMember, error) {
 		}
 		return nil, err
 	}
+	decodeTenantMemberForDisplay(&member)
 	return &member, nil
 }
 
@@ -239,6 +252,7 @@ func ListTenantMembers(tenantID int64) ([]models.TenantMember, error) {
 		if err := rows.Scan(&member.ID, &member.TenantID, &member.UserID, &member.Role, &member.Status, &member.JoinedAt, &member.UpdatedAt, &member.Email, &member.DisplayName); err != nil {
 			return nil, err
 		}
+		decodeTenantMemberForDisplay(&member)
 		members = append(members, member)
 	}
 
@@ -246,6 +260,9 @@ func ListTenantMembers(tenantID int64) ([]models.TenantMember, error) {
 }
 
 func UpdateTenantMember(tenantID, userID int64, role, status string) error {
+	role = security.EscapePlainText(role)
+	status = security.EscapePlainText(status)
+
 	_, err := GetDB().Exec(`
 		UPDATE tenant_members
 		SET role = ?, status = ?, updated_at = ?
@@ -277,6 +294,9 @@ func RemoveTenantMember(tenantID, userID int64) error {
 }
 
 func CreateTenantInvite(tenantID int64, email, role string, expiresAt time.Time) error {
+	email = security.EscapePlainText(email)
+	role = security.EscapePlainText(role)
+
 	result, err := GetDB().Exec(`
 		UPDATE tenant_invites
 		SET role = ?, expires_at = ?, updated_at = CURRENT_TIMESTAMP
@@ -320,6 +340,7 @@ func ListTenantInvites(tenantID int64) ([]models.TenantInvite, error) {
 		if acceptedAt.Valid {
 			invite.AcceptedAt = &acceptedAt.Time
 		}
+		decodeTenantInviteForDisplay(&invite)
 		invites = append(invites, invite)
 	}
 
@@ -336,6 +357,8 @@ func RevokeTenantInvite(inviteID int64) error {
 }
 
 func AcceptPendingInvites(userID int64, email string) error {
+	email = security.EscapePlainText(email)
+
 	rows, err := GetDB().Query(`
 		SELECT id, tenant_id, role FROM tenant_invites
 		WHERE email = ? AND status = 'pending' AND expires_at > ?
@@ -380,6 +403,11 @@ func AcceptPendingInvites(userID int64, email string) error {
 }
 
 func UpdateTenant(tenantID int64, name, slug, description, status string, autoSyncEnabled bool) error {
+	name = security.EscapePlainText(name)
+	slug = security.EscapePlainText(slug)
+	description = security.EscapePlainText(description)
+	status = security.EscapePlainText(status)
+
 	_, err := GetDB().Exec(`
 		UPDATE tenants
 		SET name = ?, slug = ?, description = ?, status = ?, auto_sync_enabled = ?, updated_at = ?
