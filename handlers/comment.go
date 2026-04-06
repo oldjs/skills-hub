@@ -26,6 +26,15 @@ func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 校验图形验证码
+	captchaInput := strings.TrimSpace(r.FormValue("captcha"))
+	slug := r.FormValue("slug")
+	if !validateCaptcha(r, captchaInput) {
+		// 验证码错误，带错误信息跳回详情页
+		http.Redirect(w, r, "/skill?slug="+slug+"&error=captcha", http.StatusSeeOther)
+		return
+	}
+
 	skillID, err := strconv.ParseInt(r.FormValue("skill_id"), 10, 64)
 	if err != nil {
 		http.Error(w, "无效的 skill ID", http.StatusBadRequest)
@@ -42,8 +51,6 @@ func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "评论内容不能超过 500 个字符", http.StatusBadRequest)
 		return
 	}
-
-	slug := r.FormValue("slug")
 
 	if err := db.AddComment(sess.CurrentTenantID, skillID, sess.UserID, content); err != nil {
 		http.Error(w, "评论失败", http.StatusInternalServerError)

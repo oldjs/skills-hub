@@ -42,6 +42,13 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 
 	categories, _ := db.GetCategories(sess.CurrentTenantID)
 
+	// 检查是否有来自评论验证码失败的错误
+	errParam := r.URL.Query().Get("error")
+	errMsg := ""
+	if errParam == "captcha" {
+		errMsg = "图形验证码错误，请重新输入后提交评论"
+	}
+
 	data := PageData{
 		Title:       skill.DisplayName + " - Skills Hub",
 		Skill:       skill,
@@ -49,6 +56,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		CurrentPage: "skill",
 		Comments:    comments,
 		UserRating:  userRating,
+		Error:       errMsg,
 	}
 
 	RenderTemplate(w, r, "skill.html", data)

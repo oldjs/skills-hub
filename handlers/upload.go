@@ -46,6 +46,13 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 校验图形验证码
+	captchaInput := strings.TrimSpace(r.FormValue("captcha"))
+	if !validateCaptcha(r, captchaInput) {
+		renderUploadError(w, r, "图形验证码错误，请重新输入")
+		return
+	}
+
 	file, header, err := r.FormFile("zipfile")
 	if err != nil {
 		renderUploadError(w, r, "请选择要上传的 ZIP 文件")

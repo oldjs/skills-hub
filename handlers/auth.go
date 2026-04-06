@@ -331,11 +331,19 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 
 	email := normalizeEmail(r.FormValue("email"))
 	code := strings.TrimSpace(r.FormValue("code"))
+	captchaInput := strings.TrimSpace(r.FormValue("captcha"))
 	data := loginPageData("登录 - Skills Hub")
 	data["Email"] = email
 
 	if email == "" || code == "" {
 		data["Error"] = "请输入邮箱和验证码"
+		RenderTemplate(w, r, "login.html", data)
+		return
+	}
+
+	// 校验图形验证码
+	if !validateCaptcha(r, captchaInput) {
+		data["Error"] = "图形验证码错误，请重新输入"
 		RenderTemplate(w, r, "login.html", data)
 		return
 	}
@@ -411,6 +419,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 	email := normalizeEmail(r.FormValue("email"))
 	displayName := strings.TrimSpace(r.FormValue("display_name"))
 	code := strings.TrimSpace(r.FormValue("code"))
+	captchaInput := strings.TrimSpace(r.FormValue("captcha"))
 	data := map[string]interface{}{
 		"Title":       "注册 - Skills Hub",
 		"Email":       email,
@@ -422,6 +431,14 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		RenderTemplate(w, r, "register.html", data)
 		return
 	}
+
+	// 校验图形验证码
+	if !validateCaptcha(r, captchaInput) {
+		data["Error"] = "图形验证码错误，请重新输入"
+		RenderTemplate(w, r, "register.html", data)
+		return
+	}
+
 	if len([]rune(displayName)) < 2 || len([]rune(displayName)) > 32 {
 		data["Error"] = "显示名称长度需要 2-32 个字符"
 		RenderTemplate(w, r, "register.html", data)
