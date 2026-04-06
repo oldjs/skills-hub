@@ -10,6 +10,12 @@ import (
 )
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
+	sess := GetCurrentSession(r)
+	if sess == nil || sess.CurrentTenantID == 0 {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
 	query := r.URL.Query().Get("q")
 	category := r.URL.Query().Get("category")
 	title := "搜索 Skills - Skills Hub"
@@ -24,17 +30,17 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.Header.Get("Accept"), "application/json") || r.URL.Query().Get("format") == "json" {
 		w.Header().Set("Content-Type", "application/json")
 
-		skills, err := db.GetFilteredSkills(query, category)
+		skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category)
 
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"skills": []models.Skill{},
 				"error":  err.Error(),
 			})
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"skills":   skills,
 			"query":    query,
 			"category": category,
@@ -42,13 +48,13 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	skills, err := db.GetFilteredSkills(query, category)
+	skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category)
 
 	if err != nil {
 		skills = []models.Skill{}
 	}
 
-	categories, _ := db.GetCategories()
+	categories, _ := db.GetCategories(sess.CurrentTenantID)
 
 	data := PageData{
 		Title:         title,
@@ -61,23 +67,29 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		CategoryCount: len(categories),
 	}
 
-	RenderTemplate(w, "search.html", data)
+	RenderTemplate(w, r, "search.html", data)
 }
 
 func SearchAPIHandler(w http.ResponseWriter, r *http.Request) {
+	sess := GetCurrentSession(r)
+	if sess == nil || sess.CurrentTenantID == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	query := r.URL.Query().Get("q")
 	if query == "" {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"skills": []models.Skill{},
 		})
 		return
 	}
 
-	skills, err := db.SearchSkills(query)
+	skills, err := db.SearchSkills(sess.CurrentTenantID, query)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"skills": []models.Skill{},
 		})
 		return
@@ -87,7 +99,7 @@ func SearchAPIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"skills": skills,
 	})
 }

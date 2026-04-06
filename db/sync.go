@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"skills-hub/models"
-
-	_ "modernc.org/sqlite"
 )
 
 var ClawHubBaseURL = "https://wry-manatee-359.convex.site/api/search"
@@ -28,8 +26,22 @@ var SyncKeywords = []string{
 	"image", "video", "audio", "pdf", "scraping",
 }
 
-func SyncFromClawHub() error {
-	log.Println("Starting sync from ClawHub...")
+func SyncAllActiveTenants() {
+	tenantIDs, err := ListAutoSyncTenantIDs()
+	if err != nil {
+		log.Printf("读取自动同步租户失败: %v", err)
+		return
+	}
+
+	for _, tenantID := range tenantIDs {
+		if err := SyncFromClawHub(tenantID); err != nil {
+			log.Printf("租户 %d 自动同步失败: %v", tenantID, err)
+		}
+	}
+}
+
+func SyncFromClawHub(tenantID int64) error {
+	log.Printf("Starting sync from ClawHub for tenant %d", tenantID)
 	totalSynced := 0
 
 	for _, keyword := range SyncKeywords {
@@ -39,14 +51,15 @@ func SyncFromClawHub() error {
 			continue
 		}
 
-		synced := saveSkills(results)
+		synced := saveSkills(tenantID, results)
 		totalSynced += synced
-		log.Printf("Synced %d skills for keyword '%s'", synced, keyword)
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	logSync(totalSynced, strings.Join(SyncKeywords, ","))
-	log.Printf("Sync completed. Total skills synced: %d", totalSynced)
+	if err := logSync(tenantID, totalSynced, strings.Join(SyncKeywords, ","), "success", ""); err != nil {
+		return err
+	}
+	log.Printf("Sync completed for tenant %d. Total skills synced: %d", tenantID, totalSynced)
 	return nil
 }
 
@@ -73,6 +86,7 @@ func fetchFromClawHub(keyword string) ([]models.Skill, error) {
 			UpdatedAt:   time.Unix(r.UpdatedAt/1000, 0),
 			Version:     r.Version,
 			Categories:  categorizeSkill(r.DisplayName, r.Summary),
+			Source:      "clawhub",
 			ClawHubURL:  fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", r.Slug),
 		}
 		skills = append(skills, skill)
@@ -101,21 +115,29 @@ func fetchHTTP(url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func saveSkills(skills []models.Skill) int {
+func saveSkills(tenantID int64, skills []models.Skill) int {
 	if len(skills) == 0 {
 		return 0
 	}
 
-	db := GetDB()
-	tx, err := db.Begin()
+	tx, err := GetDB().Begin()
 	if err != nil {
 		return 0
 	}
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT OR REPLACE INTO skills (slug, display_name, summary, score, updated_at, version, categories)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO skills (tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, source, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(tenant_id, slug) DO UPDATE SET
+			display_name = excluded.display_name,
+			summary = excluded.summary,
+			score = excluded.score,
+			source_updated_at = excluded.source_updated_at,
+			version = excluded.version,
+			categories = excluded.categories,
+			source = excluded.source,
+			updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
 		return 0
@@ -123,20 +145,22 @@ func saveSkills(skills []models.Skill) int {
 	defer stmt.Close()
 
 	count := 0
-	for _, s := range skills {
-		_, err := stmt.Exec(s.Slug, s.DisplayName, s.Summary, s.Score, s.UpdatedAt.Unix(), s.Version, s.Categories)
-		if err == nil {
+	for _, skill := range skills {
+		if _, err := stmt.Exec(tenantID, skill.Slug, skill.DisplayName, skill.Summary, skill.Score, skill.UpdatedAt.Unix(), skill.Version, skill.Categories, skill.Source); err == nil {
 			count++
 		}
 	}
 
-	tx.Commit()
+	_ = tx.Commit()
 	return count
 }
 
-func logSync(count int, keywords string) {
-	db := GetDB()
-	db.Exec("INSERT INTO sync_log (count, keywords) VALUES (?, ?)", count, keywords)
+func logSync(tenantID int64, count int, keywords, status, message string) error {
+	_, err := GetDB().Exec(`
+		INSERT INTO sync_log (tenant_id, count, keywords, status, message)
+		VALUES (?, ?, ?, ?, ?)
+	`, tenantID, count, keywords, status, message)
+	return err
 }
 
 func categorizeSkill(name, summary string) string {
@@ -165,11 +189,11 @@ func categorizeSkill(name, summary string) string {
 	}
 
 	var matched []string
-	for _, c := range categories {
-		for _, kw := range c.keywords {
-			if strings.Contains(text, kw) {
-				if !containsStr(matched, c.category) {
-					matched = append(matched, c.category)
+	for _, item := range categories {
+		for _, keyword := range item.keywords {
+			if strings.Contains(text, keyword) {
+				if !containsStr(matched, item.category) {
+					matched = append(matched, item.category)
 				}
 				break
 			}
@@ -184,79 +208,69 @@ func categorizeSkill(name, summary string) string {
 }
 
 func containsStr(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
+	for _, current := range slice {
+		if current == item {
 			return true
 		}
 	}
 	return false
 }
 
-func GetAllSkills() ([]models.Skill, error) {
+func GetAllSkills(tenantID int64) ([]models.Skill, error) {
 	return querySkills(`
-		SELECT id, slug, display_name, summary, score, updated_at, version, categories
-		FROM skills ORDER BY score DESC, display_name ASC
-	`)
+		SELECT id, tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, source
+		FROM skills WHERE tenant_id = ?
+		ORDER BY score DESC, display_name ASC
+	`, tenantID)
 }
 
-func SearchSkills(query string) ([]models.Skill, error) {
-	return GetFilteredSkills(query, "")
+func SearchSkills(tenantID int64, query string) ([]models.Skill, error) {
+	return GetFilteredSkills(tenantID, query, "")
 }
 
-func GetSkillBySlug(slug string) (*models.Skill, error) {
-	db := GetDB()
-	row := db.QueryRow(`
-		SELECT id, slug, display_name, summary, score, updated_at, version, categories
-		FROM skills WHERE slug = ?
-	`, slug)
+func GetSkillBySlug(tenantID int64, slug string) (*models.Skill, error) {
+	row := GetDB().QueryRow(`
+		SELECT id, tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, source
+		FROM skills WHERE tenant_id = ? AND slug = ?
+	`, tenantID, slug)
 
-	var s models.Skill
+	var skill models.Skill
 	var updatedAt int64
-	err := row.Scan(&s.ID, &s.Slug, &s.DisplayName, &s.Summary, &s.Score, &updatedAt, &s.Version, &s.Categories)
-	if err != nil {
+	if err := row.Scan(&skill.ID, &skill.TenantID, &skill.Slug, &skill.DisplayName, &skill.Summary, &skill.Score, &updatedAt, &skill.Version, &skill.Categories, &skill.Source); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		return nil, err
 	}
-	s.UpdatedAt = time.Unix(updatedAt, 0)
-	s.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", s.Slug)
-
-	return &s, nil
+	skill.UpdatedAt = time.Unix(updatedAt, 0)
+	skill.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", skill.Slug)
+	return &skill, nil
 }
 
-func GetSkillsByCategory(category string) ([]models.Skill, error) {
-	return GetFilteredSkills("", category)
-}
-
-func GetFilteredSkills(query, category string) ([]models.Skill, error) {
+func GetFilteredSkills(tenantID int64, query, category string) ([]models.Skill, error) {
 	statement := `
-		SELECT id, slug, display_name, summary, score, updated_at, version, categories
+		SELECT id, tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, source
 		FROM skills
+		WHERE tenant_id = ?
 	`
+	args := []interface{}{tenantID}
 
-	var clauses []string
-	var args []interface{}
 	if query != "" {
 		pattern := "%" + query + "%"
-		clauses = append(clauses, "(display_name LIKE ? OR summary LIKE ? OR categories LIKE ?)")
+		statement += ` AND (display_name LIKE ? OR summary LIKE ? OR categories LIKE ?)`
 		args = append(args, pattern, pattern, pattern)
 	}
 	if category != "" {
-		clauses = append(clauses, "categories LIKE ?")
+		statement += ` AND categories LIKE ?`
 		args = append(args, "%"+category+"%")
 	}
-	if len(clauses) > 0 {
-		statement += " WHERE " + strings.Join(clauses, " AND ")
-	}
-	statement += " ORDER BY score DESC, display_name ASC"
 
+	statement += ` ORDER BY score DESC, display_name ASC`
 	return querySkills(statement, args...)
 }
 
 func querySkills(statement string, args ...interface{}) ([]models.Skill, error) {
-	db := GetDB()
-	rows, err := db.Query(statement, args...)
+	rows, err := GetDB().Query(statement, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -264,67 +278,85 @@ func querySkills(statement string, args ...interface{}) ([]models.Skill, error) 
 
 	var skills []models.Skill
 	for rows.Next() {
-		var s models.Skill
+		var skill models.Skill
 		var updatedAt int64
-		err := rows.Scan(&s.ID, &s.Slug, &s.DisplayName, &s.Summary, &s.Score, &updatedAt, &s.Version, &s.Categories)
-		if err != nil {
-			continue
+		if err := rows.Scan(&skill.ID, &skill.TenantID, &skill.Slug, &skill.DisplayName, &skill.Summary, &skill.Score, &updatedAt, &skill.Version, &skill.Categories, &skill.Source); err != nil {
+			return nil, err
 		}
-		s.UpdatedAt = time.Unix(updatedAt, 0)
-		s.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", s.Slug)
-		skills = append(skills, s)
+		skill.UpdatedAt = time.Unix(updatedAt, 0)
+		skill.ClawHubURL = fmt.Sprintf("https://clawhub.ai/skills?focus=search&q=%s", skill.Slug)
+		skills = append(skills, skill)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return skills, nil
+	return skills, rows.Err()
 }
 
-func GetCategories() ([]string, error) {
-	db := GetDB()
-	rows, err := db.Query(`SELECT DISTINCT categories FROM skills WHERE categories IS NOT NULL`)
+func GetCategories(tenantID int64) ([]string, error) {
+	rows, err := GetDB().Query(`SELECT DISTINCT categories FROM skills WHERE tenant_id = ? AND categories != ''`, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	categorySet := make(map[string]bool)
+	set := make(map[string]bool)
 	for rows.Next() {
 		var categories string
 		if err := rows.Scan(&categories); err != nil {
-			continue
+			return nil, err
 		}
-		for _, c := range strings.Split(categories, ",") {
-			c = strings.TrimSpace(c)
-			if c != "" {
-				categorySet[c] = true
+		for _, category := range strings.Split(categories, ",") {
+			category = strings.TrimSpace(category)
+			if category != "" {
+				set[category] = true
 			}
 		}
 	}
 
 	var result []string
-	for c := range categorySet {
-		result = append(result, c)
+	for category := range set {
+		result = append(result, category)
 	}
 	sort.Strings(result)
-	return result, nil
+	return result, rows.Err()
+}
+
+func GetLatestSyncLog(tenantID int64) (*time.Time, int, string, string, error) {
+	row := GetDB().QueryRow(`
+		SELECT synced_at, count, status, message
+		FROM sync_log WHERE tenant_id = ?
+		ORDER BY id DESC LIMIT 1
+	`, tenantID)
+
+	var syncedAt time.Time
+	var count int
+	var status string
+	var message string
+	if err := row.Scan(&syncedAt, &count, &status, &message); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, 0, "", "", nil
+		}
+		return nil, 0, "", "", err
+	}
+	return &syncedAt, count, status, message, nil
 }
 
 var (
 	syncMutex sync.Mutex
-	isSyncing bool
+	syncState = make(map[int64]bool)
 )
 
-func IsSyncing() bool {
+func IsSyncing(tenantID int64) bool {
 	syncMutex.Lock()
 	defer syncMutex.Unlock()
-	return isSyncing
+	return syncState[tenantID]
 }
 
-func SetSyncing(status bool) {
+func SetSyncing(tenantID int64, status bool) {
 	syncMutex.Lock()
-	isSyncing = status
-	syncMutex.Unlock()
+	defer syncMutex.Unlock()
+	if status {
+		syncState[tenantID] = true
+		return
+	}
+	delete(syncState, tenantID)
 }

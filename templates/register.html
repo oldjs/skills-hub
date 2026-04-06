@@ -1,0 +1,63 @@
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}
+<div class="mx-auto flex min-h-[calc(100vh-140px)] max-w-6xl items-center px-4 py-10 sm:px-6 lg:px-8">
+    <div class="grid w-full gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+        <section class="rounded-[32px] border border-white/70 bg-white/95 p-6 shadow-[0_30px_80px_-50px_rgba(234,88,12,0.45)] sm:p-8 order-2 lg:order-1">
+            <div class="mb-8 text-center">
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-500/30">
+                    <i class="fas fa-user-plus text-lg"></i>
+                </div>
+                <h2 class="mt-5 text-2xl font-bold text-slate-900">创建账号</h2>
+                <p class="mt-2 text-sm text-slate-500">注册成功后会自动分配默认租户，或者接收管理员提前发出的租户邀请。</p>
+            </div>
+
+            <div id="auth-message" class="mb-4 rounded-2xl border px-4 py-3 text-sm {{if .Error}}border-red-200 bg-red-50 text-red-600{{else if .Info}}border-emerald-200 bg-emerald-50 text-emerald-600{{else}}hidden{{end}}">{{if .Error}}{{.Error}}{{else}}{{.Info}}{{end}}</div>
+
+            <form method="POST" action="/register" class="space-y-4" id="auth-form" data-purpose="register">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-600">显示名称</label>
+                    <input type="text" name="display_name" id="display_name" value="{{.DisplayName}}" placeholder="团队成员名称" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-600">邮箱</label>
+                    <input type="email" name="email" id="email" value="{{.Email}}" placeholder="name@company.com" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-600">图形验证码</label>
+                    <div class="flex gap-3">
+                        <input type="text" name="captcha" id="captcha" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="输入右侧验证码" class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm uppercase text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required>
+                        <img id="captchaImg" src="/captcha" alt="验证码" class="h-[50px] w-[148px] cursor-pointer rounded-2xl border border-orange-100 bg-orange-50 object-cover" title="点击刷新">
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-600">邮箱验证码</label>
+                    <div class="flex gap-3">
+                        <input type="text" name="code" id="code" maxlength="6" placeholder="6 位数字验证码" class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required>
+                        <button type="button" id="sendCodeBtn" class="shrink-0 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-600 transition hover:border-orange-300 hover:bg-orange-100">发送验证码</button>
+                    </div>
+                </div>
+                <button type="submit" class="w-full rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-500/25">注册并进入</button>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-slate-500">已有账号？<a href="/login" class="font-medium text-orange-500 hover:text-orange-600">去登录</a></p>
+        </section>
+
+        <section class="order-1 lg:order-2">
+            <div class="max-w-xl lg:ml-auto">
+                <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-1.5 text-sm font-medium text-orange-600">多租户隔离已接入</div>
+                <h1 class="text-5xl font-bold tracking-tight text-slate-900 leading-tight">一个账号可加入多个租户，页面顶部可以随时切换上下文</h1>
+                <p class="mt-5 text-lg leading-8 text-slate-500">租户之间的 skills 数据、搜索结果和同步日志全部分开存储。平台管理员还可以在后台创建和管理租户。</p>
+                <div class="mt-8 space-y-4">
+                    <div class="rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-sm">
+                        <div class="text-sm font-medium text-slate-400">租户后台</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900">/admin</div>
+                        <p class="mt-2 text-sm text-slate-500">只有 `is_platform_admin=true` 的账号才能访问。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{{end}}

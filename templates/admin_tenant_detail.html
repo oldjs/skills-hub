@@ -1,0 +1,164 @@
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <a href="/admin" class="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-orange-500"><i class="fas fa-arrow-left text-xs"></i> 返回租户列表</a>
+            <h1 class="mt-4 text-3xl font-bold tracking-tight text-slate-900">{{.Tenant.Name}}</h1>
+            <p class="mt-2 text-sm text-slate-500">管理成员、邀请、租户状态和该租户下的同步任务。</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            <span class="rounded-full px-3 py-1 {{if eq .Tenant.Status "active"}}bg-emerald-50 text-emerald-600{{else}}bg-slate-200 text-slate-500{{end}}">{{.Tenant.Status}}</span>
+            <span class="rounded-full bg-orange-50 px-3 py-1 text-orange-600">Slug: {{.Tenant.Slug}}</span>
+        </div>
+    </div>
+
+    {{if .Error}}<div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{{.Error}}</div>{{end}}
+    {{if .Info}}<div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{{.Info}}</div>{{end}}
+
+    <div class="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+        <div class="space-y-6">
+            <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+                <h2 class="text-lg font-semibold text-slate-900">租户设置</h2>
+                <form action="/admin/tenant/update" method="POST" class="mt-6 space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    <input type="hidden" name="tenant_id" value="{{.Tenant.ID}}">
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-slate-600">租户名称</label>
+                        <input type="text" name="name" value="{{.Tenant.Name}}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100">
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-slate-600">租户标识</label>
+                        <input type="text" name="slug" value="{{.Tenant.Slug}}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100">
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-slate-600">描述</label>
+                        <textarea name="description" rows="4" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100">{{.Tenant.Description}}</textarea>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-600">状态</label>
+                            <select name="status" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100">
+                                <option value="active" {{if eq .Tenant.Status "active"}}selected{{end}}>active</option>
+                                <option value="disabled" {{if eq .Tenant.Status "disabled"}}selected{{end}}>disabled</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-600">自动同步</label>
+                            <select name="auto_sync_enabled" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100">
+                                <option value="1" {{if .Tenant.AutoSyncEnabled}}selected{{end}}>开启</option>
+                                <option value="0" {{if not .Tenant.AutoSyncEnabled}}selected{{end}}>关闭</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <button type="submit" class="rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600">保存设置</button>
+                    </div>
+                </form>
+                <form action="/admin/tenant/sync" method="POST" class="mt-4">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    <input type="hidden" name="tenant_id" value="{{.Tenant.ID}}">
+                    <button type="submit" class="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-600 transition hover:border-orange-300 hover:bg-orange-100">手动同步当前租户技能</button>
+                </form>
+            </section>
+
+            <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+                <h2 class="text-lg font-semibold text-slate-900">添加成员 / 发送邀请</h2>
+                <form action="/admin/tenant/invite" method="POST" class="mt-6 space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    <input type="hidden" name="tenant_id" value="{{.Tenant.ID}}">
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-slate-600">邮箱</label>
+                        <input type="email" name="email" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required>
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-slate-600">角色</label>
+                        <select name="role" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100">
+                            <option value="member">member</option>
+                            <option value="admin">admin</option>
+                            <option value="owner">owner</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600">保存</button>
+                </form>
+            </section>
+        </div>
+
+        <div class="space-y-6">
+            <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+                <div class="mb-5 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-slate-900">成员</h2>
+                    <span class="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-600">{{len .Members}} 人</span>
+                </div>
+                <div class="space-y-4">
+                    {{range .Members}}
+                    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">{{if .DisplayName}}{{.DisplayName}}{{else}}{{.Email}}{{end}}</div>
+                                <div class="mt-1 text-sm text-slate-500">{{.Email}}</div>
+                            </div>
+                            <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
+                                <form action="/admin/tenant/member/update" method="POST" class="flex flex-wrap items-center gap-2">
+                                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                    <input type="hidden" name="tenant_id" value="{{$.Tenant.ID}}">
+                                    <input type="hidden" name="user_id" value="{{.UserID}}">
+                                    <select name="role" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                        <option value="owner" {{if eq .Role "owner"}}selected{{end}}>owner</option>
+                                        <option value="admin" {{if eq .Role "admin"}}selected{{end}}>admin</option>
+                                        <option value="member" {{if eq .Role "member"}}selected{{end}}>member</option>
+                                    </select>
+                                    <select name="status" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                        <option value="active" {{if eq .Status "active"}}selected{{end}}>active</option>
+                                        <option value="disabled" {{if eq .Status "disabled"}}selected{{end}}>disabled</option>
+                                    </select>
+                                    <button type="submit" class="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-medium text-orange-600">更新</button>
+                                </form>
+                                <form action="/admin/tenant/member/remove" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                    <input type="hidden" name="tenant_id" value="{{$.Tenant.ID}}">
+                                    <input type="hidden" name="user_id" value="{{.UserID}}">
+                                    <button type="submit" class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">移除</button>
+                                </form>
+                            </div>
+                        </div>
+                    </article>
+                    {{else}}
+                    <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">当前没有成员。</div>
+                    {{end}}
+                </div>
+            </section>
+
+            <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+                <div class="mb-5 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-slate-900">邀请记录</h2>
+                    <span class="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-600">{{len .Invites}} 条</span>
+                </div>
+                <div class="space-y-4">
+                    {{range .Invites}}
+                    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">{{.Email}}</div>
+                                <div class="mt-1 text-sm text-slate-500">角色 {{.Role}} · 状态 {{.Status}} · 到期 {{formatDate .ExpiresAt}}</div>
+                            </div>
+                            {{if eq .Status "pending"}}
+                            <form action="/admin/tenant/invite/revoke" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                <input type="hidden" name="tenant_id" value="{{$.Tenant.ID}}">
+                                <input type="hidden" name="invite_id" value="{{.ID}}">
+                                <button type="submit" class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">撤销邀请</button>
+                            </form>
+                            {{end}}
+                        </div>
+                    </article>
+                    {{else}}
+                    <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">当前没有邀请记录。</div>
+                    {{end}}
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,64 @@
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}
+<div class="mx-auto flex min-h-[calc(100vh-140px)] max-w-6xl items-center px-4 py-10 sm:px-6 lg:px-8">
+    <div class="grid w-full gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <section class="hidden lg:block">
+            <div class="max-w-xl">
+                <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-1.5 text-sm font-medium text-orange-600">邮箱验证码登录</div>
+                <h1 class="text-5xl font-bold tracking-tight text-slate-900 leading-tight">登录后只会看到自己租户下的 Skills 数据</h1>
+                <p class="mt-5 text-lg leading-8 text-slate-500">验证码、CSRF 和 session 都按 ticket-system 的风格放进 Redis，Skills Hub 继续保持阿里云橙色视觉。</p>
+                <div class="mt-8 grid gap-4 sm:grid-cols-2">
+                    <div class="rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-sm">
+                        <div class="text-sm font-medium text-slate-400">登录态</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900">Redis Session</div>
+                        <p class="mt-2 text-sm text-slate-500">Cookie 只存 token，服务端保存会话内容。</p>
+                    </div>
+                    <div class="rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-sm">
+                        <div class="text-sm font-medium text-slate-400">数据访问</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900">租户隔离</div>
+                        <p class="mt-2 text-sm text-slate-500">所有页面和搜索接口都按当前租户过滤。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-[32px] border border-white/70 bg-white/95 p-6 shadow-[0_30px_80px_-50px_rgba(234,88,12,0.45)] sm:p-8">
+            <div class="mb-8 text-center">
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-500/30">
+                    <i class="fas fa-envelope-open-text text-lg"></i>
+                </div>
+                <h2 class="mt-5 text-2xl font-bold text-slate-900">登录 Skills Hub</h2>
+                <p class="mt-2 text-sm text-slate-500">输入邮箱并完成验证码校验后进入你的租户工作区。</p>
+            </div>
+
+            <div id="auth-message" class="mb-4 rounded-2xl border px-4 py-3 text-sm {{if .Error}}border-red-200 bg-red-50 text-red-600{{else if .Info}}border-emerald-200 bg-emerald-50 text-emerald-600{{else}}hidden{{end}}">{{if .Error}}{{.Error}}{{else}}{{.Info}}{{end}}</div>
+
+            <form method="POST" action="/login" class="space-y-4" id="auth-form" data-purpose="login">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-600">邮箱</label>
+                    <input type="email" name="email" id="email" value="{{.Email}}" placeholder="name@company.com" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-600">图形验证码</label>
+                    <div class="flex gap-3">
+                        <input type="text" name="captcha" id="captcha" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="输入右侧验证码" class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm uppercase text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required>
+                        <img id="captchaImg" src="/captcha" alt="验证码" class="h-[50px] w-[148px] cursor-pointer rounded-2xl border border-orange-100 bg-orange-50 object-cover" title="点击刷新">
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-600">邮箱验证码</label>
+                    <div class="flex gap-3">
+                        <input type="text" name="code" id="code" maxlength="6" placeholder="6 位数字验证码" class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required>
+                        <button type="button" id="sendCodeBtn" class="shrink-0 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-600 transition hover:border-orange-300 hover:bg-orange-100">发送验证码</button>
+                    </div>
+                </div>
+                <button type="submit" class="w-full rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-500/25">登录</button>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-slate-500">还没有账号？<a href="/register" class="font-medium text-orange-500 hover:text-orange-600">去注册</a></p>
+        </section>
+    </div>
+</div>
+{{end}}

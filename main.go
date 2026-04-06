@@ -27,18 +27,18 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
+	if err := handlers.InitAuth(); err != nil {
+		log.Fatalf("Failed to initialize auth: %v", err)
+	}
+	defer handlers.CloseAuth()
 
 	handlers.InitTemplates("./templates")
 
 	go startAutoSync(6 * time.Hour)
 
 	if len(os.Args) > 1 && os.Args[1] == "--sync" {
-		log.Println("Running initial sync...")
-		db.SetSyncing(true)
-		defer db.SetSyncing(false)
-		if err := db.SyncFromClawHub(); err != nil {
-			log.Printf("Initial sync failed: %v", err)
-		}
+		log.Println("Running initial sync for all active tenants...")
+		db.SyncAllActiveTenants()
 	}
 
 	mux := http.NewServeMux()
@@ -66,10 +66,28 @@ func main() {
 }
 
 func setupRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/", handlers.HomeHandler)
-	mux.HandleFunc("/search", handlers.SearchHandler)
-	mux.HandleFunc("/skill", handlers.SkillHandler)
-	mux.HandleFunc("/api/search", handlers.SearchAPIHandler)
+	mux.HandleFunc("/login", handlers.UserLogin)
+	mux.HandleFunc("/register", handlers.UserRegister)
+	mux.HandleFunc("/logout", handlers.UserLogout)
+	mux.HandleFunc("/captcha", handlers.CaptchaHandler)
+	mux.HandleFunc("/send-code", handlers.SendCodeHandler)
+	mux.HandleFunc("/switch-tenant", handlers.RequireAuth(handlers.SwitchTenant))
+	mux.HandleFunc("/api/search", handlers.RequireAuth(handlers.SearchAPIHandler))
+	mux.HandleFunc("/api/sync/status", handlers.RequireAuth(handlers.SyncStatusHandler))
+	mux.HandleFunc("/", handlers.RequireAuth(handlers.HomeHandler))
+	mux.HandleFunc("/search", handlers.RequireAuth(handlers.SearchHandler))
+	mux.HandleFunc("/skill", handlers.RequireAuth(handlers.SkillHandler))
+
+	mux.HandleFunc("/admin", handlers.RequirePlatformAdmin(handlers.AdminTenantsHandler))
+	mux.HandleFunc("/admin/tenant", handlers.RequirePlatformAdmin(handlers.AdminTenantDetailHandler))
+	mux.HandleFunc("/admin/tenant/create", handlers.RequirePlatformAdmin(handlers.AdminTenantCreateHandler))
+	mux.HandleFunc("/admin/tenant/update", handlers.RequirePlatformAdmin(handlers.AdminTenantUpdateHandler))
+	mux.HandleFunc("/admin/tenant/invite", handlers.RequirePlatformAdmin(handlers.AdminTenantInviteHandler))
+	mux.HandleFunc("/admin/tenant/invite/revoke", handlers.RequirePlatformAdmin(handlers.AdminTenantInviteRevokeHandler))
+	mux.HandleFunc("/admin/tenant/member/update", handlers.RequirePlatformAdmin(handlers.AdminTenantMemberUpdateHandler))
+	mux.HandleFunc("/admin/tenant/member/remove", handlers.RequirePlatformAdmin(handlers.AdminTenantMemberRemoveHandler))
+	mux.HandleFunc("/admin/tenant/sync", handlers.RequirePlatformAdmin(handlers.AdminTenantSyncHandler))
+
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 }
 
@@ -81,11 +99,7 @@ func startAutoSync(interval time.Duration) {
 		select {
 		case <-ticker.C:
 			log.Println("Auto-sync triggered")
-			db.SetSyncing(true)
-			if err := db.SyncFromClawHub(); err != nil {
-				log.Printf("Auto-sync failed: %v", err)
-			}
-			db.SetSyncing(false)
+			db.SyncAllActiveTenants()
 		}
 	}
 }

@@ -13,7 +13,13 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	skills, err := db.GetAllSkills()
+	sess := GetCurrentSession(r)
+	if sess == nil || sess.CurrentTenantID == 0 {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	skills, err := db.GetAllSkills(sess.CurrentTenantID)
 	if err != nil {
 		skills = []models.Skill{}
 	}
@@ -23,7 +29,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		featuredSkills = featuredSkills[:12]
 	}
 
-	categories, err := db.GetCategories()
+	categories, err := db.GetCategories(sess.CurrentTenantID)
 	if err != nil {
 		categories = []string{}
 	}
@@ -37,5 +43,5 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		CategoryCount: len(categories),
 	}
 
-	RenderTemplate(w, "index.html", data)
+	RenderTemplate(w, r, "index.html", data)
 }
