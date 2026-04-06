@@ -116,9 +116,15 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	if categories == "" {
 		categories = db.CategorizeByText(meta.Name, meta.Description)
 	}
+	if meta.Author == "" {
+		// 作者没写就回退到上传者，API 至少能给出一个稳定作者。
+		if user, err := db.GetUserByID(sess.UserID); err == nil && user != nil {
+			meta.Author = user.DisplayName
+		}
+	}
 
 	// 存数据库
-	skill, err := db.SaveUploadedSkill(sess.CurrentTenantID, slug, meta.Name, meta.Description, skillMD, meta.Version, categories)
+	skill, err := db.SaveUploadedSkill(sess.CurrentTenantID, slug, meta.Name, meta.Description, skillMD, meta.Version, categories, meta.Author)
 	if err != nil {
 		renderUploadError(w, r, err.Error())
 		return
@@ -167,6 +173,8 @@ type skillMeta struct {
 	Description string
 	Version     string
 	Categories  string
+	Author      string
+	Keywords    string
 }
 
 // 解析 SKILL.md，支持 frontmatter 和纯 markdown
@@ -183,6 +191,8 @@ func parseSkillMD(content string) skillMeta {
 			meta.Description = extractFrontmatterField(frontmatter, "description")
 			meta.Version = extractFrontmatterField(frontmatter, "version")
 			meta.Categories = extractFrontmatterField(frontmatter, "categories")
+			meta.Author = extractFrontmatterField(frontmatter, "author")
+			meta.Keywords = extractFrontmatterField(frontmatter, "keywords")
 
 			// 如果 frontmatter 没给 description，从正文取
 			if meta.Description == "" {

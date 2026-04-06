@@ -39,6 +39,14 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateAddAuthorColumn(); err != nil {
+			return
+		}
+
+		if err = migrateAddDownloadCountColumn(); err != nil {
+			return
+		}
+
 		if err = createIndexes(); err != nil {
 			return
 		}
@@ -122,6 +130,8 @@ func createCoreTables() error {
 			source_updated_at INTEGER NOT NULL DEFAULT 0,
 			version TEXT NOT NULL DEFAULT '',
 			categories TEXT NOT NULL DEFAULT '',
+			author TEXT NOT NULL DEFAULT '',
+			download_count INTEGER NOT NULL DEFAULT 0,
 			source TEXT NOT NULL DEFAULT 'clawhub',
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -249,6 +259,8 @@ func migrateLegacyData() error {
 			source_updated_at INTEGER NOT NULL DEFAULT 0,
 			version TEXT NOT NULL DEFAULT '',
 			categories TEXT NOT NULL DEFAULT '',
+			author TEXT NOT NULL DEFAULT '',
+			download_count INTEGER NOT NULL DEFAULT 0,
 			source TEXT NOT NULL DEFAULT 'clawhub',
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -257,8 +269,8 @@ func migrateLegacyData() error {
 		)`); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(`INSERT INTO skills (tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, source, created_at, updated_at)
-			SELECT ?, slug, display_name, COALESCE(summary, ''), COALESCE(score, 0), COALESCE(updated_at, 0), COALESCE(version, ''), COALESCE(categories, ''), 'clawhub', COALESCE(created_at, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP
+		if _, err := tx.Exec(`INSERT INTO skills (tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, author, download_count, source, created_at, updated_at)
+			SELECT ?, slug, display_name, COALESCE(summary, ''), COALESCE(score, 0), COALESCE(updated_at, 0), COALESCE(version, ''), COALESCE(categories, ''), 'ClawHub', 0, 'clawhub', COALESCE(created_at, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP
 			FROM skills_legacy`, defaultTenantID); err != nil {
 			return err
 		}
@@ -361,6 +373,38 @@ func migrateAddContentColumn() error {
 	_, err = database.Exec(`ALTER TABLE skills ADD COLUMN content TEXT NOT NULL DEFAULT ''`)
 	if err != nil {
 		log.Printf("添加 content 列失败（可能已存在）: %v", err)
+	}
+	return nil
+}
+
+func migrateAddAuthorColumn() error {
+	hasAuthor, err := tableHasColumn("skills", "author")
+	if err != nil {
+		return err
+	}
+	if !hasAuthor {
+		if _, err := database.Exec(`ALTER TABLE skills ADD COLUMN author TEXT NOT NULL DEFAULT ''`); err != nil {
+			log.Printf("添加 author 列失败（可能已存在）: %v", err)
+		}
+	}
+
+	if _, err := database.Exec(`UPDATE skills SET author = 'ClawHub' WHERE source != 'upload' AND author = ''`); err != nil {
+		log.Printf("回填 author 失败: %v", err)
+	}
+	return nil
+}
+
+func migrateAddDownloadCountColumn() error {
+	hasDownloadCount, err := tableHasColumn("skills", "download_count")
+	if err != nil {
+		return err
+	}
+	if hasDownloadCount {
+		return nil
+	}
+
+	if _, err := database.Exec(`ALTER TABLE skills ADD COLUMN download_count INTEGER NOT NULL DEFAULT 0`); err != nil {
+		log.Printf("添加 download_count 列失败（可能已存在）: %v", err)
 	}
 	return nil
 }

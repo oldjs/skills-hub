@@ -128,8 +128,8 @@ func saveSkills(tenantID int64, skills []models.Skill) int {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO skills (tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, source, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		INSERT INTO skills (tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, author, source, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(tenant_id, slug) DO UPDATE SET
 			display_name = excluded.display_name,
 			summary = excluded.summary,
@@ -137,6 +137,7 @@ func saveSkills(tenantID int64, skills []models.Skill) int {
 			source_updated_at = excluded.source_updated_at,
 			version = excluded.version,
 			categories = excluded.categories,
+			author = excluded.author,
 			source = excluded.source,
 			updated_at = CURRENT_TIMESTAMP
 	`)
@@ -152,9 +153,10 @@ func saveSkills(tenantID int64, skills []models.Skill) int {
 		summary := security.EscapePlainText(skill.Summary)
 		version := security.EscapePlainText(skill.Version)
 		categories := security.EscapePlainText(skill.Categories)
+		author := security.EscapePlainText("ClawHub")
 		source := security.EscapePlainText(skill.Source)
 
-		if _, err := stmt.Exec(tenantID, skill.Slug, displayName, summary, skill.Score, skill.UpdatedAt.Unix(), version, categories, source); err == nil {
+		if _, err := stmt.Exec(tenantID, skill.Slug, displayName, summary, skill.Score, skill.UpdatedAt.Unix(), version, categories, author, source); err == nil {
 			count++
 		}
 	}
