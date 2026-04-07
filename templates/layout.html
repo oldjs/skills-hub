@@ -50,8 +50,8 @@
                     <a href="/" class="text-sm font-medium transition {{if eq .CurrentPage "home"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">总览</a>
                     <a href="/search" class="text-sm font-medium transition {{if eq .CurrentPage "search"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">探索</a>
                     <a href="/upload" class="text-sm font-medium transition {{if eq .CurrentPage "upload"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">上传</a>
-                    {{if .IsPlatformAdmin}}
-                    <a href="/admin" class="text-sm font-medium transition {{if eq .CurrentPage "admin"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">租户管理</a>
+                    {{if .IsAdmin}}
+                    <a href="/admin" class="text-sm font-medium transition {{if eq .CurrentPage "admin"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">管理员后台</a>
                     {{end}}
                     {{end}}
                 </div>
@@ -95,8 +95,8 @@
                 <a href="/" class="block rounded-xl px-3 py-2 hover:bg-gray-100">首页</a>
                 <a href="/search" class="block rounded-xl px-3 py-2 hover:bg-gray-100">搜索</a>
                 <a href="/upload" class="block rounded-xl px-3 py-2 hover:bg-gray-100">上传</a>
-                {{if .IsPlatformAdmin}}
-                <a href="/admin" class="block rounded-xl px-3 py-2 hover:bg-gray-100">租户管理</a>
+                {{if .IsAdmin}}
+                <a href="/admin" class="block rounded-xl px-3 py-2 hover:bg-gray-100">管理员后台</a>
                 {{end}}
                 {{if .TenantOptions}}
                 <form action="/switch-tenant" method="POST" class="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">

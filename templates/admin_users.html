@@ -18,6 +18,7 @@
                         <h3 class="text-lg font-semibold text-slate-900">{{if .DisplayName}}{{.DisplayName}}{{else}}{{.Email}}{{end}}</h3>
                         <span class="rounded-full px-2.5 py-1 text-xs font-medium {{if eq .Status "active"}}bg-emerald-50 text-emerald-600{{else}}bg-red-50 text-red-600{{end}}">{{.Status}}</span>
                         {{if .IsPlatformAdmin}}<span class="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-600">platform_admin</span>{{end}}
+                        {{if and (not .IsPlatformAdmin) .IsSubAdmin}}<span class="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-600">sub_admin</span>{{end}}
                     </div>
                     <div class="mt-2 text-sm text-slate-500">{{.Email}}</div>
                     <div class="mt-2 text-sm text-slate-500">加入租户 {{.TenantCount}} 个 · 创建于 {{formatDate .CreatedAt}} · 最近登录 {{formatTimePtr .LastLoginAt}}</div>
@@ -28,6 +29,10 @@
                     <select name="status" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
                         <option value="active" {{if eq .Status "active"}}selected{{end}}>active</option>
                         <option value="disabled" {{if eq .Status "disabled"}}selected{{end}}>disabled</option>
+                    </select>
+                    <select name="admin_role" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm" {{if .IsPlatformAdmin}}disabled{{end}}>
+                        <option value="user" {{if not .IsSubAdmin}}selected{{end}}>普通用户</option>
+                        <option value="sub_admin" {{if .IsSubAdmin}}selected{{end}}>子管理员</option>
                     </select>
                     <button type="submit" class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800">保存状态</button>
                 </form>

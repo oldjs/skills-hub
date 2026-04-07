@@ -41,6 +41,14 @@ func AdminUserUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/users?error=状态不正确", http.StatusSeeOther)
 		return
 	}
+	adminRole := strings.TrimSpace(r.FormValue("admin_role"))
+	if adminRole == "" {
+		adminRole = "user"
+	}
+	if adminRole != "user" && adminRole != "sub_admin" {
+		http.Redirect(w, r, "/admin/users?error=管理员角色不正确", http.StatusSeeOther)
+		return
+	}
 
 	user, err := db.GetUserByID(userID)
 	if err != nil || user == nil {
@@ -64,7 +72,14 @@ func AdminUserUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/users?error=用户状态更新失败", http.StatusSeeOther)
 		return
 	}
+	if !user.IsPlatformAdmin {
+		shouldBeSubAdmin := adminRole == "sub_admin"
+		if err := db.SetUserSubAdmin(userID, shouldBeSubAdmin); err != nil {
+			http.Redirect(w, r, "/admin/users?error=子管理员权限更新失败", http.StatusSeeOther)
+			return
+		}
+	}
 
-	recordAdminAction(r, "user.status", "user", userID, fmt.Sprintf("将用户 %s 设为 %s", user.Email, status))
+	recordAdminAction(r, "user.status", "user", userID, fmt.Sprintf("将用户 %s 设为状态 %s，后台角色 %s", user.Email, status, adminRole))
 	http.Redirect(w, r, "/admin/users?info=用户状态已更新", http.StatusSeeOther)
 }

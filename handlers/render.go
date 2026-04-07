@@ -81,6 +81,8 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 		pageData["TenantOptions"] = ctx.TenantOptions
 		pageData["CurrentTenant"] = ctx.CurrentTenant
 		pageData["IsPlatformAdmin"] = ctx.User != nil && ctx.User.IsPlatformAdmin
+		pageData["IsSubAdmin"] = ctx.User != nil && ctx.User.IsSubAdmin
+		pageData["IsAdmin"] = ctx.User != nil && (ctx.User.IsPlatformAdmin || ctx.User.IsSubAdmin)
 	}
 
 	mergeTemplateData(pageData, data)

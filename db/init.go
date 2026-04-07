@@ -51,6 +51,10 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateAddSubAdminColumn(); err != nil {
+			return
+		}
+
 		if err = createIndexes(); err != nil {
 			return
 		}
@@ -94,6 +98,7 @@ func createCoreTables() error {
 			display_name TEXT NOT NULL DEFAULT '',
 			status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
 			is_platform_admin INTEGER NOT NULL DEFAULT 0 CHECK (is_platform_admin IN (0, 1)),
+			is_sub_admin INTEGER NOT NULL DEFAULT 0 CHECK (is_sub_admin IN (0, 1)),
 			last_tenant_id INTEGER,
 			last_login_at DATETIME,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -460,6 +465,21 @@ func migrateAddSkillReviewColumns() error {
 		}
 	}
 
+	return nil
+}
+
+func migrateAddSubAdminColumn() error {
+	hasSubAdmin, err := tableHasColumn("users", "is_sub_admin")
+	if err != nil {
+		return err
+	}
+	if hasSubAdmin {
+		return nil
+	}
+
+	if _, err := database.Exec(`ALTER TABLE users ADD COLUMN is_sub_admin INTEGER NOT NULL DEFAULT 0`); err != nil {
+		log.Printf("添加 is_sub_admin 列失败（可能已存在）: %v", err)
+	}
 	return nil
 }
 

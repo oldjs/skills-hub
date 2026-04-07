@@ -12,15 +12,16 @@ func GetUserByEmail(email string) (*models.User, error) {
 	email = security.EscapePlainText(email)
 
 	row := GetDB().QueryRow(`
-		SELECT id, email, display_name, status, is_platform_admin, last_tenant_id, last_login_at, created_at, updated_at
+		SELECT id, email, display_name, status, is_platform_admin, is_sub_admin, last_tenant_id, last_login_at, created_at, updated_at
 		FROM users WHERE email = ?
 	`, email)
 
 	var user models.User
 	var isPlatformAdmin int
+	var isSubAdmin int
 	var lastTenantID sql.NullInt64
 	var lastLoginAt sql.NullTime
-	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.Status, &isPlatformAdmin, &lastTenantID, &lastLoginAt, &user.CreatedAt, &user.UpdatedAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.Status, &isPlatformAdmin, &isSubAdmin, &lastTenantID, &lastLoginAt, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -28,6 +29,7 @@ func GetUserByEmail(email string) (*models.User, error) {
 	}
 
 	user.IsPlatformAdmin = isPlatformAdmin == 1
+	user.IsSubAdmin = isSubAdmin == 1
 	if lastTenantID.Valid {
 		user.LastTenantID = &lastTenantID.Int64
 	}
@@ -58,8 +60,8 @@ func CreateUser(email, displayName string, isPlatformAdmin bool) (*models.User, 
 	shouldBeAdmin := isPlatformAdmin || count == 0
 
 	result, err := tx.Exec(`
-		INSERT INTO users (email, display_name, is_platform_admin)
-		VALUES (?, ?, ?)
+		INSERT INTO users (email, display_name, is_platform_admin, is_sub_admin)
+		VALUES (?, ?, ?, 0)
 	`, email, displayName, boolToInt(shouldBeAdmin))
 	if err != nil {
 		return nil, err
@@ -78,15 +80,16 @@ func CreateUser(email, displayName string, isPlatformAdmin bool) (*models.User, 
 
 func GetUserByID(userID int64) (*models.User, error) {
 	row := GetDB().QueryRow(`
-		SELECT id, email, display_name, status, is_platform_admin, last_tenant_id, last_login_at, created_at, updated_at
+		SELECT id, email, display_name, status, is_platform_admin, is_sub_admin, last_tenant_id, last_login_at, created_at, updated_at
 		FROM users WHERE id = ?
 	`, userID)
 
 	var user models.User
 	var isPlatformAdmin int
+	var isSubAdmin int
 	var lastTenantID sql.NullInt64
 	var lastLoginAt sql.NullTime
-	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.Status, &isPlatformAdmin, &lastTenantID, &lastLoginAt, &user.CreatedAt, &user.UpdatedAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.Status, &isPlatformAdmin, &isSubAdmin, &lastTenantID, &lastLoginAt, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -94,6 +97,7 @@ func GetUserByID(userID int64) (*models.User, error) {
 	}
 
 	user.IsPlatformAdmin = isPlatformAdmin == 1
+	user.IsSubAdmin = isSubAdmin == 1
 	if lastTenantID.Valid {
 		user.LastTenantID = &lastTenantID.Int64
 	}
@@ -126,9 +130,18 @@ func UpdateUserLastTenant(userID, tenantID int64) error {
 func SetUserPlatformAdmin(userID int64, isPlatformAdmin bool) error {
 	_, err := GetDB().Exec(`
 		UPDATE users
-		SET is_platform_admin = ?, updated_at = ?
+		SET is_platform_admin = ?, is_sub_admin = CASE WHEN ? = 1 THEN 0 ELSE is_sub_admin END, updated_at = ?
 		WHERE id = ?
-	`, boolToInt(isPlatformAdmin), time.Now(), userID)
+	`, boolToInt(isPlatformAdmin), boolToInt(isPlatformAdmin), time.Now(), userID)
+	return err
+}
+
+func SetUserSubAdmin(userID int64, isSubAdmin bool) error {
+	_, err := GetDB().Exec(`
+		UPDATE users
+		SET is_sub_admin = CASE WHEN is_platform_admin = 1 THEN 0 ELSE ? END, updated_at = ?
+		WHERE id = ?
+	`, boolToInt(isSubAdmin), time.Now(), userID)
 	return err
 }
 

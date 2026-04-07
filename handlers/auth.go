@@ -30,6 +30,7 @@ type sessionData struct {
 	Email           string `json:"email"`
 	DisplayName     string `json:"display_name"`
 	IsPlatformAdmin bool   `json:"is_platform_admin"`
+	IsSubAdmin      bool   `json:"is_sub_admin"`
 	CurrentTenantID int64  `json:"current_tenant_id"`
 	TenantName      string `json:"tenant_name"`
 	TenantSlug      string `json:"tenant_slug"`
@@ -196,6 +197,16 @@ func IsPlatformAdmin(r *http.Request) bool {
 	return sess != nil && sess.IsPlatformAdmin
 }
 
+func IsSubAdmin(r *http.Request) bool {
+	sess := getSession(r)
+	return sess != nil && sess.IsSubAdmin
+}
+
+func IsAdmin(r *http.Request) bool {
+	sess := getSession(r)
+	return sess != nil && (sess.IsPlatformAdmin || sess.IsSubAdmin)
+}
+
 func GetCurrentSession(r *http.Request) *sessionData {
 	return getSession(r)
 }
@@ -304,6 +315,7 @@ func buildSession(user *models.User, tenant *models.UserTenant) sessionData {
 		Email:           user.Email,
 		DisplayName:     user.DisplayName,
 		IsPlatformAdmin: user.IsPlatformAdmin,
+		IsSubAdmin:      user.IsSubAdmin,
 		CurrentTenantID: tenant.TenantID,
 		TenantName:      tenant.TenantName,
 		TenantSlug:      tenant.TenantSlug,
@@ -390,6 +402,7 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 	if shouldBePlatformAdmin(user.Email) && !user.IsPlatformAdmin {
 		if err := db.SetUserPlatformAdmin(user.ID, true); err == nil {
 			user.IsPlatformAdmin = true
+			user.IsSubAdmin = false
 		}
 	}
 
@@ -622,6 +635,26 @@ func RequirePlatformAdmin(next http.HandlerFunc) http.HandlerFunc {
 		}
 		if !sess.IsPlatformAdmin {
 			http.Error(w, "权限不足", http.StatusForbidden)
+			return
+		}
+		next(w, r)
+	}
+}
+
+func RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sess, err := loadActiveSession(w, r)
+		if err != nil {
+			logSessionRefreshError(err)
+			http.Error(w, "系统繁忙，请稍后重试", http.StatusInternalServerError)
+			return
+		}
+		if sess == nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		if !sess.IsPlatformAdmin && !sess.IsSubAdmin {
+			http.Error(w, "需要管理员权限", http.StatusForbidden)
 			return
 		}
 		next(w, r)

@@ -8,6 +8,7 @@ type User struct {
 	DisplayName     string     `json:"displayName"`
 	Status          string     `json:"status"`
 	IsPlatformAdmin bool       `json:"isPlatformAdmin"`
+	IsSubAdmin      bool       `json:"isSubAdmin"`
 	LastTenantID    *int64     `json:"lastTenantId,omitempty"`
 	LastLoginAt     *time.Time `json:"lastLoginAt,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`

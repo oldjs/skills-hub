@@ -63,6 +63,7 @@ type AdminUser struct {
 	DisplayName     string
 	Status          string
 	IsPlatformAdmin bool
+	IsSubAdmin      bool
 	TenantCount     int
 	CreatedAt       time.Time
 	LastLoginAt     *time.Time

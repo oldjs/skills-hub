@@ -48,12 +48,12 @@
             <div class="max-w-xl lg:ml-auto">
                 <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-1.5 text-sm font-medium text-orange-600">多租户隔离已接入</div>
                 <h1 class="text-5xl font-bold tracking-tight text-slate-900 leading-tight">一个账号可加入多个租户，页面顶部可以随时切换上下文</h1>
-                <p class="mt-5 text-lg leading-8 text-slate-500">租户之间的 skills 数据、搜索结果和同步日志全部分开存储。平台管理员还可以在后台创建和管理租户。</p>
+                <p class="mt-5 text-lg leading-8 text-slate-500">租户之间的 skills 数据、搜索结果和同步日志全部分开存储。平台管理员和子管理员都可以进入后台，但权限范围不同。</p>
                 <div class="mt-8 space-y-4">
                     <div class="rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-sm">
                         <div class="text-sm font-medium text-slate-400">租户后台</div>
                         <div class="mt-2 text-2xl font-semibold text-slate-900">/admin</div>
-                        <p class="mt-2 text-sm text-slate-500">只有 `is_platform_admin=true` 的账号才能访问。</p>
+                        <p class="mt-2 text-sm text-slate-500">平台管理员拥有全部权限，子管理员只负责审核 Skills 和评论。</p>
                     </div>
                 </div>
             </div>

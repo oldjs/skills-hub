@@ -128,6 +128,7 @@ func sessionChanged(left, right *sessionData) bool {
 		left.Email != right.Email ||
 		left.DisplayName != right.DisplayName ||
 		left.IsPlatformAdmin != right.IsPlatformAdmin ||
+		left.IsSubAdmin != right.IsSubAdmin ||
 		left.CurrentTenantID != right.CurrentTenantID ||
 		left.TenantName != right.TenantName ||
 		left.TenantSlug != right.TenantSlug ||

@@ -77,7 +77,7 @@ func GetAdminCommentByID(commentID int64) (*models.AdminComment, error) {
 
 func ListAdminUsers() ([]models.AdminUser, error) {
 	rows, err := GetDB().Query(`
-		SELECT u.id, u.email, u.display_name, u.status, u.is_platform_admin, u.created_at, u.last_login_at,
+		SELECT u.id, u.email, u.display_name, u.status, u.is_platform_admin, u.is_sub_admin, u.created_at, u.last_login_at,
 		       COUNT(tm.id)
 		FROM users u
 		LEFT JOIN tenant_members tm ON tm.user_id = u.id
@@ -94,15 +94,17 @@ func ListAdminUsers() ([]models.AdminUser, error) {
 		var (
 			item            models.AdminUser
 			isPlatformAdmin int
+			isSubAdmin      int
 			lastLoginAt     sql.NullTime
 		)
-		if err := rows.Scan(&item.ID, &item.Email, &item.DisplayName, &item.Status, &isPlatformAdmin, &item.CreatedAt, &lastLoginAt, &item.TenantCount); err != nil {
+		if err := rows.Scan(&item.ID, &item.Email, &item.DisplayName, &item.Status, &isPlatformAdmin, &isSubAdmin, &item.CreatedAt, &lastLoginAt, &item.TenantCount); err != nil {
 			return nil, err
 		}
 		item.Email = security.DecodeStoredText(item.Email)
 		item.DisplayName = security.DecodeStoredText(item.DisplayName)
 		item.Status = security.DecodeStoredText(item.Status)
 		item.IsPlatformAdmin = isPlatformAdmin == 1
+		item.IsSubAdmin = isSubAdmin == 1
 		if lastLoginAt.Valid {
 			item.LastLoginAt = &lastLoginAt.Time
 		}
