@@ -16,6 +16,9 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
+	if !enforceRateLimit(w, "search-ip:"+GetClientIP(r), 30, sess.IsPlatformAdmin || sess.IsSubAdmin) {
+		return
+	}
 
 	query := r.URL.Query().Get("q")
 	category := r.URL.Query().Get("category")
@@ -90,6 +93,9 @@ func SearchAPIHandler(w http.ResponseWriter, r *http.Request) {
 	sess := GetCurrentSession(r)
 	if sess == nil || sess.CurrentTenantID == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	if !enforceRateLimit(w, "search-ip:"+GetClientIP(r), 30, sess.IsPlatformAdmin || sess.IsSubAdmin) {
 		return
 	}
 

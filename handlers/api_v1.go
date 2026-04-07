@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,28 +19,29 @@ import (
 )
 
 type apiSearchSkill struct {
+	ID            int64   `json:"id"`
 	Slug          string  `json:"slug"`
 	Name          string  `json:"name"`
 	Description   string  `json:"description"`
 	Version       string  `json:"version"`
 	Author        string  `json:"author"`
-	RatingAvg     float64 `json:"rating_avg"`
-	RatingCount   int     `json:"rating_count"`
+	Rating        float64 `json:"rating"`
 	DownloadCount int     `json:"download_count"`
-	CreatedAt     string  `json:"created_at"`
+	Category      string  `json:"category"`
 }
 
 type apiSkillDetail struct {
+	ID            int64    `json:"id"`
 	Slug          string   `json:"slug"`
 	Name          string   `json:"name"`
 	Description   string   `json:"description"`
 	Version       string   `json:"version"`
 	Author        string   `json:"author"`
 	Readme        string   `json:"readme"`
-	RatingAvg     float64  `json:"rating_avg"`
+	Rating        float64  `json:"rating"`
 	RatingCount   int      `json:"rating_count"`
 	DownloadCount int      `json:"download_count"`
-	CreatedAt     string   `json:"created_at"`
+	Category      string   `json:"category"`
 	Keywords      []string `json:"keywords"`
 }
 
@@ -49,44 +51,78 @@ type apiCategoryItem struct {
 }
 
 func APIV1SearchHandler(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := resolveAPITenantScope(w, r)
+	authCtx, ok := requireAPIKeyAuth(w, r)
+	if !ok {
+		return
+	}
+
+	tenantID, err := resolveAPITenantScopeForUser(authCtx.User, r)
 	if err != nil {
 		writeAPITenantScopeError(w, err)
 		return
 	}
 
-	skills, err := db.SearchSkillsForAPI(strings.TrimSpace(r.URL.Query().Get("q")), strings.TrimSpace(r.URL.Query().Get("sort")), tenantID)
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	category := strings.TrimSpace(r.URL.Query().Get("category"))
+	sortBy := strings.TrimSpace(r.URL.Query().Get("sort"))
+	page := parsePositiveInt(r.URL.Query().Get("page"), 1)
+	perPage := parsePositiveInt(r.URL.Query().Get("per_page"), 20)
+	if perPage > 100 {
+		perPage = 100
+	}
+
+	skills, err := db.SearchSkillsForAPI(query, category, sortBy, tenantID)
 	if err != nil {
 		log.Printf("api search failed: %v", err)
 		writeAPIError(w, http.StatusInternalServerError, "搜索失败")
 		return
 	}
 
-	result := make([]apiSearchSkill, 0, len(skills))
-	for _, skill := range skills {
+	total := len(skills)
+	start := (page - 1) * perPage
+	if start > total {
+		start = total
+	}
+	end := start + perPage
+	if end > total {
+		end = total
+	}
+
+	result := make([]apiSearchSkill, 0, end-start)
+	for _, skill := range skills[start:end] {
 		result = append(result, apiSearchSkill{
+			ID:            skill.ID,
 			Slug:          skill.Slug,
 			Name:          skill.Name,
 			Description:   skill.Description,
 			Version:       skill.Version,
 			Author:        skill.Author,
-			RatingAvg:     skill.RatingAvg,
-			RatingCount:   skill.RatingCount,
+			Rating:        skill.RatingAvg,
 			DownloadCount: skill.DownloadCount,
-			CreatedAt:     skill.CreatedAt.UTC().Format(timeLayout),
+			Category:      skill.Categories,
 		})
 	}
 
-	writeJSON(w, http.StatusOK, result)
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"skills":   result,
+		"page":     page,
+		"per_page": perPage,
+		"total":    total,
+	})
 }
 
 func APIV1SkillDetailHandler(w http.ResponseWriter, r *http.Request) {
+	authCtx, ok := requireAPIKeyAuth(w, r)
+	if !ok {
+		return
+	}
+
 	slug, err := apiSlugFromPath(r.URL.Path, "/api/v1/skills/")
 	if err != nil {
 		writeAPIError(w, http.StatusBadRequest, "skill slug 不正确")
 		return
 	}
-	tenantID, err := resolveAPITenantScope(w, r)
+	tenantID, err := resolveAPITenantScopeForUser(authCtx.User, r)
 	if err != nil {
 		writeAPITenantScopeError(w, err)
 		return
@@ -111,33 +147,39 @@ func APIV1SkillDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, apiSkillDetail{
+		ID:            skill.ID,
 		Slug:          skill.Slug,
 		Name:          skill.Name,
 		Description:   skill.Description,
 		Version:       skill.Version,
 		Author:        skill.Author,
 		Readme:        string(readme),
-		RatingAvg:     skill.RatingAvg,
+		Rating:        skill.RatingAvg,
 		RatingCount:   skill.RatingCount,
 		DownloadCount: skill.DownloadCount,
-		CreatedAt:     skill.CreatedAt.UTC().Format(timeLayout),
+		Category:      skill.Categories,
 		Keywords:      buildSkillKeywords(*skill),
 	})
 }
 
 func APIV1DownloadHandler(w http.ResponseWriter, r *http.Request) {
-	slug, err := apiSlugFromPath(r.URL.Path, "/api/v1/download/")
-	if err != nil {
-		writeAPIError(w, http.StatusBadRequest, "skill slug 不正确")
-		return
-	}
-	tenantID, err := resolveAPITenantScope(w, r)
-	if err != nil {
-		writeAPITenantScopeError(w, err)
+	authCtx, ok := requireAPIKeyAuth(w, r)
+	if !ok {
 		return
 	}
 
-	skill, err := db.GetSkillBySlugForAPI(slug, tenantID)
+	idText, err := apiSlugFromPath(r.URL.Path, "/api/v1/download/")
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "skill id 不正确")
+		return
+	}
+	skillID, err := parseInt64(idText)
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "skill id 不正确")
+		return
+	}
+
+	skill, err := db.GetSkillByIDForAPI(skillID, authCtx.User.ID)
 	if err != nil {
 		log.Printf("api download failed: %v", err)
 		writeAPIError(w, http.StatusInternalServerError, "读取 skill 失败")
@@ -149,7 +191,6 @@ func APIV1DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileName := skill.Slug + ".zip"
-
 	if skill.Source == "upload" {
 		zipPath := filepath.Join("./uploads", fmt.Sprintf("%d", skill.TenantID), skill.Slug+".zip")
 		data, err := os.ReadFile(zipPath)
@@ -181,8 +222,68 @@ func APIV1DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(buf.Bytes())
 }
 
+func APIV1UploadHandler(w http.ResponseWriter, r *http.Request) {
+	authCtx, ok := requireAPIKeyAuth(w, r)
+	if !ok {
+		return
+	}
+	if r.Method != http.MethodPost {
+		writeAPIError(w, http.StatusMethodNotAllowed, "仅支持 POST")
+		return
+	}
+	if !enforceRateLimit(w, fmt.Sprintf("user-write:%d", authCtx.User.ID), 10, authCtx.User.IsPlatformAdmin || authCtx.User.IsSubAdmin) {
+		return
+	}
+
+	tenant, err := resolveRequiredAPITenantForUser(authCtx.User, r)
+	if err != nil {
+		writeAPITenantScopeError(w, err)
+		return
+	}
+	if tenant == nil {
+		writeAPIError(w, http.StatusForbidden, "当前用户没有可用租户")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "文件大小超过 10MB 限制")
+		return
+	}
+	file, header, err := r.FormFile("zipfile")
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "请选择要上传的 ZIP 文件")
+		return
+	}
+	defer file.Close()
+	if !strings.HasSuffix(strings.ToLower(header.Filename), ".zip") {
+		writeAPIError(w, http.StatusBadRequest, "只支持 ZIP 格式的文件")
+		return
+	}
+	buf, err := io.ReadAll(file)
+	if err != nil {
+		writeAPIError(w, http.StatusInternalServerError, "读取文件失败")
+		return
+	}
+	skill, err := persistUploadedSkillArchive(tenant.TenantID, authCtx.User.ID, buf)
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"id":            skill.ID,
+		"slug":          skill.Slug,
+		"review_status": "pending",
+		"message":       "Skill 已提交审核，管理员通过后会在前台展示",
+	})
+}
+
 func APIV1CategoriesHandler(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := resolveAPITenantScope(w, r)
+	authCtx, ok := requireAPIKeyAuth(w, r)
+	if !ok {
+		return
+	}
+	tenantID, err := resolveAPITenantScopeForUser(authCtx.User, r)
 	if err != nil {
 		writeAPITenantScopeError(w, err)
 		return
@@ -206,10 +307,13 @@ func APIV1CategoriesHandler(w http.ResponseWriter, r *http.Request) {
 		return items[i].Count > items[j].Count
 	})
 
-	writeJSON(w, http.StatusOK, items)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"categories": items})
 }
 
 func APIV1StatsHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireAPIKeyAuth(w, r); !ok {
+		return
+	}
 	stats, err := db.GetPlatformStatsForAPI()
 	if err != nil {
 		log.Printf("api stats failed: %v", err)
@@ -218,8 +322,6 @@ func APIV1StatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, stats)
 }
-
-const timeLayout = "2006-01-02T15:04:05Z07:00"
 
 func parseTenantIDQuery(r *http.Request) (*int64, error) {
 	value := strings.TrimSpace(r.URL.Query().Get("tenant_id"))
@@ -231,26 +333,6 @@ func parseTenantIDQuery(r *http.Request) (*int64, error) {
 		return nil, err
 	}
 	return &parsed, nil
-}
-
-func resolveAPITenantScope(w http.ResponseWriter, r *http.Request) (*int64, error) {
-	tenantID, err := parseTenantIDQuery(r)
-	if err != nil {
-		return nil, fmt.Errorf("tenant_id 参数不正确")
-	}
-	if tenantID == nil || *tenantID == 0 {
-		return nil, nil
-	}
-
-	_, ok, err := requireTenantMembership(w, r, *tenantID)
-	if err != nil {
-		return nil, fmt.Errorf("租户校验失败")
-	}
-	if !ok {
-		return nil, fmt.Errorf("无权访问该租户数据")
-	}
-
-	return tenantID, nil
 }
 
 func writeAPITenantScopeError(w http.ResponseWriter, err error) {
@@ -272,6 +354,17 @@ func apiSlugFromPath(pathValue, prefix string) (string, error) {
 		return "", err
 	}
 	return decoded, nil
+}
+
+func parsePositiveInt(value string, fallback int) int {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	parsed, err := parseInt64(value)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return int(parsed)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {

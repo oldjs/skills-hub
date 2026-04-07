@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"skills-hub/db"
+	"skills-hub/models"
 )
 
 const maxUploadSize = 10 << 20 // 10MB
@@ -38,6 +39,9 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !ValidateCSRFToken(r) {
 		http.Error(w, "无效的请求", http.StatusForbidden)
+		return
+	}
+	if !enforceRateLimit(w, fmt.Sprintf("user-write:%d", sess.UserID), 10, sess.IsPlatformAdmin || sess.IsSubAdmin) {
 		return
 	}
 
@@ -75,58 +79,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 解析 ZIP
-	zipReader, err := zip.NewReader(bytes.NewReader(buf), int64(len(buf)))
-	if err != nil {
-		renderUploadError(w, r, "无效的 ZIP 文件")
-		return
-	}
-
-	// 找 SKILL.md
-	skillMD, err := findSkillMD(zipReader)
-	if err != nil {
-		renderUploadError(w, r, err.Error())
-		return
-	}
-
-	// 解析 SKILL.md 提取元数据
-	meta := parseSkillMD(skillMD)
-	if meta.Name == "" {
-		renderUploadError(w, r, "SKILL.md 中未找到技能名称，请在第一行使用 # 标题")
-		return
-	}
-
-	// 生成 slug
-	slug := generateSlug(meta.Name)
-
-	// 保存 ZIP 到磁盘
-	uploadDir := fmt.Sprintf("./uploads/%d", sess.CurrentTenantID)
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		log.Printf("创建上传目录失败: %v", err)
-		renderUploadError(w, r, "保存文件失败")
-		return
-	}
-	zipPath := filepath.Join(uploadDir, slug+".zip")
-	if err := os.WriteFile(zipPath, buf, 0644); err != nil {
-		log.Printf("保存 ZIP 失败: %v", err)
-		renderUploadError(w, r, "保存文件失败")
-		return
-	}
-
-	// 分类：如果 SKILL.md 里没提取到，用自动分类
-	categories := meta.Categories
-	if categories == "" {
-		categories = db.CategorizeByText(meta.Name, meta.Description)
-	}
-	if meta.Author == "" {
-		// 作者没写就回退到上传者，API 至少能给出一个稳定作者。
-		if user, err := db.GetUserByID(sess.UserID); err == nil && user != nil {
-			meta.Author = user.DisplayName
-		}
-	}
-
-	// 存数据库
-	_, err = db.SaveUploadedSkill(sess.CurrentTenantID, slug, meta.Name, meta.Description, skillMD, meta.Version, categories, meta.Author)
+	_, err = persistUploadedSkillArchive(sess.CurrentTenantID, sess.UserID, buf)
 	if err != nil {
 		log.Printf("save uploaded skill failed: %v", err)
 		if strings.Contains(err.Error(), "已存在") {
@@ -149,6 +102,51 @@ func renderUploadError(w http.ResponseWriter, r *http.Request, errMsg string) {
 		Error:       errMsg,
 	}
 	RenderTemplate(w, r, "upload.html", data)
+}
+
+func persistUploadedSkillArchive(tenantID, userID int64, buf []byte) (*models.Skill, error) {
+	zipReader, err := zip.NewReader(bytes.NewReader(buf), int64(len(buf)))
+	if err != nil {
+		return nil, fmt.Errorf("无效的 ZIP 文件")
+	}
+
+	skillMD, err := findSkillMD(zipReader)
+	if err != nil {
+		return nil, err
+	}
+
+	meta := parseSkillMD(skillMD)
+	if meta.Name == "" {
+		return nil, fmt.Errorf("SKILL.md 中未找到技能名称，请在第一行使用 # 标题")
+	}
+
+	slug := generateSlug(meta.Name)
+	uploadDir := fmt.Sprintf("./uploads/%d", tenantID)
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		log.Printf("创建上传目录失败: %v", err)
+		return nil, fmt.Errorf("保存文件失败")
+	}
+	zipPath := filepath.Join(uploadDir, slug+".zip")
+	if err := os.WriteFile(zipPath, buf, 0644); err != nil {
+		log.Printf("保存 ZIP 失败: %v", err)
+		return nil, fmt.Errorf("保存文件失败")
+	}
+
+	categories := meta.Categories
+	if categories == "" {
+		categories = db.CategorizeByText(meta.Name, meta.Description)
+	}
+	if meta.Author == "" {
+		if user, err := db.GetUserByID(userID); err == nil && user != nil {
+			meta.Author = user.DisplayName
+		}
+	}
+
+	skill, err := db.SaveUploadedSkill(tenantID, slug, meta.Name, meta.Description, skillMD, meta.Version, categories, meta.Author)
+	if err != nil {
+		return nil, err
+	}
+	return skill, nil
 }
 
 // 在 ZIP 里找 SKILL.md，支持根目录或一级子目录

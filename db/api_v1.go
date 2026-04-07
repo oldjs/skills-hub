@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,8 +35,8 @@ type PlatformStats struct {
 	TotalRatings  int `json:"total_ratings"`
 }
 
-func SearchSkillsForAPI(query, sortBy string, tenantID *int64) ([]APISkillRecord, error) {
-	rows, err := querySkillRowsForAPI(query, tenantID, "")
+func SearchSkillsForAPI(query, category, sortBy string, tenantID *int64) ([]APISkillRecord, error) {
+	rows, err := querySkillRowsForAPI(query, category, tenantID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +71,49 @@ func GetSkillBySlugForAPI(slug string, tenantID *int64) (*APISkillRecord, error)
 	return &merged[0], nil
 }
 
+func GetSkillByIDForAPI(skillID, userID int64) (*APISkillRecord, error) {
+	row := GetDB().QueryRow(`
+		SELECT s.id, s.tenant_id, s.slug, s.display_name, s.summary, s.version,
+		       COALESCE(s.author, ''), s.source, COALESCE(s.content, ''), COALESCE(s.categories, ''),
+		       COALESCE(s.download_count, 0), s.created_at, COALESCE(SUM(r.score), 0), COUNT(r.id)
+		FROM skills s
+		LEFT JOIN skill_ratings r ON r.skill_id = s.id AND r.tenant_id = s.tenant_id
+		LEFT JOIN tenant_members tm ON tm.tenant_id = s.tenant_id AND tm.user_id = ?
+		WHERE s.id = ?
+		  AND (
+		    s.source != 'upload'
+		    OR (
+		      s.source = 'upload'
+		      AND COALESCE(s.review_status, 'approved') = 'approved'
+		      AND tm.status = 'active'
+		    )
+		  )
+		GROUP BY s.id
+	`, userID, skillID)
+
+	var item apiSkillRow
+	if err := row.Scan(&item.ID, &item.TenantID, &item.Slug, &item.Name, &item.Description, &item.Version, &item.Author, &item.Source, &item.Content, &item.Categories, &item.DownloadCount, &item.CreatedAt, &item.RatingSum, &item.RatingCount); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	item.Name = security.DecodeStoredText(item.Name)
+	item.Description = security.DecodeStoredText(item.Description)
+	item.Version = security.DecodeStoredText(item.Version)
+	item.Author = security.DecodeStoredText(item.Author)
+	item.Source = security.DecodeStoredText(item.Source)
+	item.Content = security.DecodeStoredText(item.Content)
+	item.Categories = security.DecodeStoredText(item.Categories)
+	merged := mergeAPISkillRows([]apiSkillRow{item})
+	if len(merged) == 0 {
+		return nil, nil
+	}
+	return &merged[0], nil
+}
+
 func ListCategoryCountsForAPI(tenantID *int64) (map[string]int, error) {
-	skills, err := SearchSkillsForAPI("", "rating", tenantID)
+	skills, err := SearchSkillsForAPI("", "", "rating", tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +164,7 @@ type apiSkillRow struct {
 	RatingSum float64
 }
 
-func querySkillRowsForAPI(query string, tenantID *int64, slug string) ([]apiSkillRow, error) {
+func querySkillRowsForAPI(query, category string, tenantID *int64, slug string) ([]apiSkillRow, error) {
 	statement := `
 		SELECT s.id, s.tenant_id, s.slug, s.display_name, s.summary, s.version,
 		       COALESCE(s.author, ''), s.source, COALESCE(s.content, ''), COALESCE(s.categories, ''),
@@ -142,6 +184,10 @@ func querySkillRowsForAPI(query string, tenantID *int64, slug string) ([]apiSkil
 		pattern := "%" + query + "%"
 		statement += ` AND (s.slug LIKE ? OR s.display_name LIKE ? OR s.summary LIKE ? OR s.categories LIKE ? OR s.version LIKE ? OR COALESCE(s.author, '') LIKE ?)`
 		args = append(args, pattern, pattern, pattern, pattern, pattern, pattern)
+	}
+	if category != "" {
+		statement += ` AND s.categories LIKE ?`
+		args = append(args, "%"+security.EscapePlainText(category)+"%")
 	}
 	if slug != "" {
 		statement += ` AND s.slug = ?`
@@ -239,7 +285,7 @@ func queryUploadedSkillRowsBySlug(tenantID int64, slug string) ([]apiSkillRow, e
 }
 
 func queryPublicSkillRowsBySlug(slug string) ([]apiSkillRow, error) {
-	return querySkillRowsForAPI("", nil, slug)
+	return querySkillRowsForAPI("", "", nil, slug)
 }
 
 func mergeAPISkillRows(rows []apiSkillRow) []APISkillRecord {

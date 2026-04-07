@@ -31,7 +31,7 @@ func InitTemplates(templateDir string) {
 	}
 	basePath := filepath.Join(templateDir, "layout.html")
 	adminShellPath := filepath.Join(templateDir, "admin_shell.html")
-	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
+	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "account.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
 
 	for _, page := range pages {
 		files := []string{basePath, filepath.Join(templateDir, page)}
@@ -163,35 +163,43 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	if data.AdminSkill != nil {
 		target["AdminSkill"] = data.AdminSkill
 	}
+	if data.APIKeys != nil {
+		target["APIKeys"] = data.APIKeys
+	}
+	if data.GeneratedAPIKey != "" {
+		target["GeneratedAPIKey"] = data.GeneratedAPIKey
+	}
 }
 
 type PageData struct {
-	Title         string
-	Skills        []models.Skill
-	Categories    []string
-	Query         string
-	Category      string
-	SortBy        string // 排序方式：score, rating, latest
-	StatusFilter  string
-	CurrentPage   string
-	Skill         *models.Skill
-	Comments      []models.SkillComment // 评论列表
-	UserRating    int                   // 当前用户的评分
-	TotalSkills   int
-	CategoryCount int
-	Error         string
-	Info          string
-	AdminSection  string
-	Tenant        *models.Tenant
-	Tenants       []models.Tenant
-	Members       []models.TenantMember
-	Invites       []models.TenantInvite
-	AdminStats    *models.AdminDashboardStats
-	AdminSkills   []models.AdminSkill
-	AdminUsers    []models.AdminUser
-	AdminComments []models.AdminComment
-	AdminLogs     []models.AdminActionLog
-	AdminSkill    *models.AdminSkill
+	Title           string
+	Skills          []models.Skill
+	Categories      []string
+	Query           string
+	Category        string
+	SortBy          string // 排序方式：score, rating, latest
+	StatusFilter    string
+	CurrentPage     string
+	Skill           *models.Skill
+	Comments        []models.SkillComment // 评论列表
+	UserRating      int                   // 当前用户的评分
+	TotalSkills     int
+	CategoryCount   int
+	Error           string
+	Info            string
+	AdminSection    string
+	Tenant          *models.Tenant
+	Tenants         []models.Tenant
+	Members         []models.TenantMember
+	Invites         []models.TenantInvite
+	AdminStats      *models.AdminDashboardStats
+	AdminSkills     []models.AdminSkill
+	AdminUsers      []models.AdminUser
+	AdminComments   []models.AdminComment
+	AdminLogs       []models.AdminActionLog
+	AdminSkill      *models.AdminSkill
+	APIKeys         []models.APIKey
+	GeneratedAPIKey string
 }
 
 func categoryList(value string) []string {

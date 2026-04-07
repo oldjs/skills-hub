@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -26,6 +27,9 @@ func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !ValidateCSRFToken(r) {
 		http.Error(w, "无效的请求", http.StatusForbidden)
+		return
+	}
+	if !enforceRateLimit(w, fmt.Sprintf("user-write:%d", sess.UserID), 10, sess.IsPlatformAdmin || sess.IsSubAdmin) {
 		return
 	}
 

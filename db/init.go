@@ -197,6 +197,17 @@ func createCoreTables() error {
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
 		)`,
+		`CREATE TABLE IF NOT EXISTS api_keys (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			key_hash TEXT NOT NULL UNIQUE,
+			key_prefix TEXT NOT NULL,
+			name TEXT NOT NULL DEFAULT '',
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_used_at DATETIME,
+			revoked_at DATETIME,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
 	}
 
 	for _, statement := range statements {
@@ -230,6 +241,8 @@ func createIndexes() error {
 		`CREATE INDEX IF NOT EXISTS idx_skill_comments_created ON skill_comments(skill_id, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_admin_action_logs_created ON admin_action_logs(created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_admin_action_logs_admin_user_id ON admin_action_logs(admin_user_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_api_keys_user_id_created_at ON api_keys(user_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_api_keys_revoked_at ON api_keys(revoked_at)`,
 	}
 
 	for _, statement := range statements {

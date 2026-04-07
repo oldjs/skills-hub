@@ -17,11 +17,13 @@ Skills Hub 解决的是“公共技能发现”和“租户私有技能管理”
 
 - 多租户隔离：用户可加入多个租户，页面顶部可切换当前工作区
 - 认证体系：邮箱验证码登录/注册，Redis Session，CSRF 防护，图形验证码
+- API Key：用户可在个人中心创建和撤销 API Key，供 AI Agent 和自动化脚本调用
 - 技能市场：首页推荐、搜索筛选、分类聚合、详情展示
 - 租户上传：支持上传包含 `SKILL.md` 的 ZIP 包并自动解析元数据
 - 互动能力：技能评分、评论、Markdown 预览
 - 平台后台：租户创建、成员管理、邀请管理、手动同步
 - 对外 API：搜索、详情、下载、分类、平台统计
+- 限速保护：API Key、用户写操作、搜索请求都带 Redis 限速
 - 安全增强：会话回源校验、租户越权校验、XSS/CSRF 防护、安全响应头
 
 ## 截图占位
@@ -162,8 +164,16 @@ Base URL：`/api/v1`
 
 说明：
 
+- 所有 `API v1` 接口都要求 `Authorization: Bearer <api_key>`
+- API Key 可在登录后的 `/account` 页面创建和撤销
 - 不带 `tenant_id` 时，仅返回公共技能数据
-- 带 `tenant_id` 时，必须是该租户的已登录成员，否则返回 `403`
+- 带 `tenant_id` 时，必须属于该租户，否则返回 `403`
+
+请求示例：
+
+```bash
+curl -H "Authorization: Bearer shk_xxx" "http://localhost:8080/api/v1/search?q=github"
+```
 
 ### 1. 搜索技能
 
@@ -174,13 +184,16 @@ Base URL：`/api/v1`
 | 参数 | 必填 | 说明 |
 | --- | --- | --- |
 | `q` | 否 | 搜索关键词 |
+| `category` | 否 | 分类筛选 |
+| `page` | 否 | 页码，默认 `1` |
+| `per_page` | 否 | 每页数量，默认 `20`，最大 `100` |
 | `sort` | 否 | 排序方式，支持 `rating`、`newest` |
 | `tenant_id` | 否 | 目标租户 ID，访问私有上传技能时需要 |
 
 示例：
 
 ```bash
-curl "http://localhost:8080/api/v1/search?q=github&sort=rating"
+curl -H "Authorization: Bearer shk_xxx" "http://localhost:8080/api/v1/search?q=github&category=开发工具&page=1&per_page=20"
 ```
 
 ### 2. 获取技能详情
@@ -191,29 +204,66 @@ curl "http://localhost:8080/api/v1/search?q=github&sort=rating"
 示例：
 
 ```bash
-curl "http://localhost:8080/api/v1/skills/my-skill"
+curl -H "Authorization: Bearer shk_xxx" "http://localhost:8080/api/v1/skills/my-skill"
 ```
 
 ### 3. 下载技能 ZIP
 
 - 方法：`GET`
-- 路径：`/api/v1/download/{slug}`
+- 路径：`/api/v1/download/{id}`
 
 示例：
 
 ```bash
-curl -L "http://localhost:8080/api/v1/download/my-skill" -o my-skill.zip
+curl -L -H "Authorization: Bearer shk_xxx" "http://localhost:8080/api/v1/download/123" -o my-skill.zip
 ```
 
-### 4. 获取分类统计
+### 4. 通过 API 上传 Skill
+
+- 方法：`POST`
+- 路径：`/api/v1/upload`
+- 表单：`multipart/form-data`
+- 字段：
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `zipfile` | 是 | 包含 `SKILL.md` 的 ZIP 文件 |
+| `tenant_id` | 否 | 指定上传到哪个租户；不传时使用当前用户默认租户 |
+
+示例：
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer shk_xxx" \
+  -F "zipfile=@./demo-skill.zip" \
+  -F "tenant_id=1" \
+  "http://localhost:8080/api/v1/upload"
+```
+
+### 5. 获取分类统计
 
 - 方法：`GET`
 - 路径：`/api/v1/categories`
 
-### 5. 获取平台统计
+示例：
+
+```bash
+curl -H "Authorization: Bearer shk_xxx" "http://localhost:8080/api/v1/categories"
+```
+
+### 6. 获取平台统计
 
 - 方法：`GET`
 - 路径：`/api/v1/stats`
+
+## 限速规则
+
+- API v1：每个 API Key 每分钟 60 次
+- API v1：同一 IP 每分钟 300 次
+- 用户写操作：每用户每分钟 10 次（评论、发布 Skill）
+- 搜索：每 IP 每分钟 30 次
+- 超限返回 `429`，并带 `Retry-After` header
+- 平台管理员和子管理员默认不受限
 
 ## 安全说明
 
