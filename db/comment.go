@@ -17,7 +17,7 @@ func AddComment(tenantID, skillID, userID int64, content string) error {
 		INSERT INTO skill_comments (tenant_id, skill_id, user_id, content)
 		SELECT ?, s.id, ?, ?
 		FROM skills s
-		WHERE s.tenant_id = ? AND s.id = ?
+		WHERE s.tenant_id = ? AND s.id = ? AND (s.source != 'upload' OR s.review_status = 'approved')
 	`, tenantID, userID, content, tenantID, skillID)
 	if err != nil {
 		return err

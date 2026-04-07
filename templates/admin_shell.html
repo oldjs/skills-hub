@@ -1,0 +1,46 @@
+{{define "admin_shell"}}
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
+        <aside class="lg:sticky lg:top-24">
+            <div class="rounded-[28px] border border-white/70 bg-white/95 p-5 shadow-sm">
+                <div class="mb-5">
+                    <div class="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-600">平台管理员后台</div>
+                    <h1 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">管理中心</h1>
+                    <p class="mt-2 text-sm text-slate-500">审核内容、管理用户与租户，并追踪后台操作。</p>
+                </div>
+
+                <nav class="space-y-2">
+                    <a href="/admin" class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition {{if eq .AdminSection "dashboard"}}bg-orange-500 text-white shadow-lg shadow-orange-500/20{{else}}text-slate-600 hover:bg-slate-100 hover:text-slate-900{{end}}">
+                        <span><i class="fas fa-chart-line mr-2"></i>Dashboard</span>
+                    </a>
+                    <a href="/admin/skills" class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition {{if eq .AdminSection "skills"}}bg-orange-500 text-white shadow-lg shadow-orange-500/20{{else}}text-slate-600 hover:bg-slate-100 hover:text-slate-900{{end}}">
+                        <span><i class="fas fa-shield-check mr-2"></i>Skills 审核</span>
+                        {{if gt .PendingReviewCount 0}}<span class="rounded-full {{if eq .AdminSection "skills"}}bg-white/20 text-white{{else}}bg-orange-50 text-orange-600{{end}} px-2 py-0.5 text-xs">{{.PendingReviewCount}}</span>{{end}}
+                    </a>
+                    <a href="/admin/comments" class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition {{if eq .AdminSection "comments"}}bg-orange-500 text-white shadow-lg shadow-orange-500/20{{else}}text-slate-600 hover:bg-slate-100 hover:text-slate-900{{end}}">
+                        <span><i class="fas fa-comments mr-2"></i>评论审核</span>
+                    </a>
+                    <a href="/admin/users" class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition {{if eq .AdminSection "users"}}bg-orange-500 text-white shadow-lg shadow-orange-500/20{{else}}text-slate-600 hover:bg-slate-100 hover:text-slate-900{{end}}">
+                        <span><i class="fas fa-users mr-2"></i>用户管理</span>
+                    </a>
+                    <a href="/admin/tenants" class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition {{if eq .AdminSection "tenants"}}bg-orange-500 text-white shadow-lg shadow-orange-500/20{{else}}text-slate-600 hover:bg-slate-100 hover:text-slate-900{{end}}">
+                        <span><i class="fas fa-building mr-2"></i>租户管理</span>
+                    </a>
+                </nav>
+
+                <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    <div>当前管理员</div>
+                    <div class="mt-1 font-medium text-slate-900">{{if .CurrentUser}}{{.CurrentUser.DisplayName}}{{end}}</div>
+                    <div class="mt-1 text-xs">{{if .CurrentUser}}{{.CurrentUser.Email}}{{end}}</div>
+                </div>
+            </div>
+        </aside>
+
+        <div class="min-w-0">
+            {{if .Error}}<div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{{.Error}}</div>{{end}}
+            {{if .Info}}<div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{{.Info}}</div>{{end}}
+            {{template "admin_content" .}}
+        </div>
+    </div>
+</div>
+{{end}}

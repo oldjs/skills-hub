@@ -1,0 +1,84 @@
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}{{template "admin_shell" .}}{{end}}
+
+{{define "admin_content"}}
+<section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <h2 class="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h2>
+            <p class="mt-2 text-sm text-slate-500">查看平台当前的内容规模、待审核状态和最近操作。</p>
+        </div>
+        <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-orange-200 hover:text-orange-600">返回业务页 <i class="fas fa-arrow-right text-xs"></i></a>
+    </div>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div class="text-sm text-slate-400">Skills 总数</div>
+            <div class="mt-3 text-3xl font-bold text-slate-900">{{.AdminStats.TotalSkills}}</div>
+        </div>
+        <div class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div class="text-sm text-slate-400">用户数</div>
+            <div class="mt-3 text-3xl font-bold text-slate-900">{{.AdminStats.TotalUsers}}</div>
+        </div>
+        <div class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div class="text-sm text-slate-400">评论数</div>
+            <div class="mt-3 text-3xl font-bold text-slate-900">{{.AdminStats.TotalComments}}</div>
+        </div>
+        <div class="rounded-3xl border border-orange-200 bg-orange-50 p-5">
+            <div class="text-sm text-orange-500">待审核 Skills</div>
+            <div class="mt-3 text-3xl font-bold text-orange-600">{{.AdminStats.PendingSkills}}</div>
+        </div>
+    </div>
+</section>
+
+<div class="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+    <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+        <div class="mb-5 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-900">待审核 Skills</h3>
+            <a href="/admin/skills" class="text-sm font-medium text-orange-600 hover:text-orange-700">查看全部</a>
+        </div>
+        <div class="space-y-4">
+            {{range .AdminSkills}}
+            <article class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 class="font-semibold text-slate-900">{{.DisplayName}}</h4>
+                            <span class="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-600">{{.ReviewStatus}}</span>
+                        </div>
+                        <div class="mt-2 text-sm text-slate-500">租户 {{.TenantName}} · Slug {{.Slug}}</div>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">{{if .Summary}}{{.Summary}}{{else}}暂无摘要{{end}}</p>
+                    </div>
+                    <a href="/admin/skill?id={{.ID}}" class="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-600 transition hover:border-orange-300 hover:bg-orange-100">去审核 <i class="fas fa-arrow-right text-xs"></i></a>
+                </div>
+            </article>
+            {{else}}
+            <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">当前没有待审核的 Skills。</div>
+            {{end}}
+        </div>
+    </section>
+
+    <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+        <div class="mb-5 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-900">最近操作日志</h3>
+        </div>
+        <div class="space-y-4">
+            {{range .AdminLogs}}
+            <article class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-900">{{if .AdminName}}{{.AdminName}}{{else}}管理员 #{{.AdminUserID}}{{end}}</div>
+                        <div class="mt-1 text-sm text-slate-500">{{.Action}} · {{.TargetType}} #{{.TargetID}}</div>
+                        {{if .Details}}<div class="mt-2 text-sm leading-6 text-slate-600">{{.Details}}</div>{{end}}
+                    </div>
+                    <div class="shrink-0 text-xs text-slate-400">{{formatTime .CreatedAt}}</div>
+                </div>
+            </article>
+            {{else}}
+            <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">还没有管理员操作记录。</div>
+            {{end}}
+        </div>
+    </section>
+</div>
+{{end}}

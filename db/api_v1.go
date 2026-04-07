@@ -92,15 +92,9 @@ func ListCategoryCountsForAPI(tenantID *int64) (map[string]int, error) {
 func GetPlatformStatsForAPI() (*PlatformStats, error) {
 	stats := &PlatformStats{}
 
-	if err := GetDB().QueryRow(`SELECT COUNT(DISTINCT slug) FROM skills WHERE source != 'upload'`).Scan(&stats.TotalSkills); err != nil {
+	if err := GetDB().QueryRow(`SELECT COUNT(*) FROM skills WHERE source != 'upload' OR COALESCE(review_status, 'approved') = 'approved'`).Scan(&stats.TotalSkills); err != nil {
 		return nil, err
 	}
-
-	var uploadedCount int
-	if err := GetDB().QueryRow(`SELECT COUNT(*) FROM skills WHERE source = 'upload'`).Scan(&uploadedCount); err != nil {
-		return nil, err
-	}
-	stats.TotalSkills += uploadedCount
 
 	if err := GetDB().QueryRow(`SELECT COUNT(*) FROM users`).Scan(&stats.TotalUsers); err != nil {
 		return nil, err
@@ -135,13 +129,13 @@ func querySkillRowsForAPI(query string, tenantID *int64, slug string) ([]apiSkil
 		       COALESCE(s.download_count, 0), s.created_at, COALESCE(SUM(r.score), 0), COUNT(r.id)
 		FROM skills s
 		LEFT JOIN skill_ratings r ON r.skill_id = s.id AND r.tenant_id = s.tenant_id
-		WHERE (s.source != 'upload'`
+		WHERE ((s.source != 'upload')`
 	args := make([]interface{}, 0, 8)
 	if tenantID != nil && *tenantID > 0 {
-		statement += ` OR (s.source = 'upload' AND s.tenant_id = ?)`
+		statement += ` OR (s.source = 'upload' AND s.tenant_id = ? AND COALESCE(s.review_status, 'approved') = 'approved')`
 		args = append(args, *tenantID)
 	}
-	statement += `)`
+	statement += `) AND (s.source != 'upload' OR COALESCE(s.review_status, 'approved') = 'approved')`
 
 	query = security.EscapePlainText(query)
 	if query != "" {
@@ -201,7 +195,7 @@ func queryUploadedSkillRowsBySlug(tenantID int64, slug string) ([]apiSkillRow, e
 		       COALESCE(s.download_count, 0), s.created_at, COALESCE(SUM(r.score), 0), COUNT(r.id)
 		FROM skills s
 		LEFT JOIN skill_ratings r ON r.skill_id = s.id AND r.tenant_id = s.tenant_id
-		WHERE s.source = 'upload' AND s.tenant_id = ? AND s.slug = ?
+		WHERE s.source = 'upload' AND s.tenant_id = ? AND s.slug = ? AND COALESCE(s.review_status, 'approved') = 'approved'
 		GROUP BY s.id, s.tenant_id, s.slug, s.display_name, s.summary, s.version, s.author, s.source, s.content, s.categories, s.download_count, s.created_at
 	`
 

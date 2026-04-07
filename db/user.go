@@ -44,16 +44,32 @@ func CreateUser(email, displayName string, isPlatformAdmin bool) (*models.User, 
 	email = security.EscapePlainText(email)
 	displayName = security.EscapePlainText(displayName)
 
-	result, err := GetDB().Exec(`
+	tx, err := GetDB().Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	count, err := CountUsersTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	// 第一位注册用户直接给平台管理员，后面再叠加环境变量提权规则。
+	shouldBeAdmin := isPlatformAdmin || count == 0
+
+	result, err := tx.Exec(`
 		INSERT INTO users (email, display_name, is_platform_admin)
 		VALUES (?, ?, ?)
-	`, email, displayName, boolToInt(isPlatformAdmin))
+	`, email, displayName, boolToInt(shouldBeAdmin))
 	if err != nil {
 		return nil, err
 	}
 
 	userID, err := result.LastInsertId()
 	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 

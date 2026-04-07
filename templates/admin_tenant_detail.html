@@ -1,10 +1,12 @@
 {{define "title"}}{{.Title}}{{end}}
 
-{{define "content"}}
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+{{define "content"}}{{template "admin_shell" .}}{{end}}
+
+{{define "admin_content"}}
+<div>
     <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-            <a href="/admin" class="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-orange-500"><i class="fas fa-arrow-left text-xs"></i> 返回租户列表</a>
+            <a href="/admin/tenants" class="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-orange-500"><i class="fas fa-arrow-left text-xs"></i> 返回租户列表</a>
             <h1 class="mt-4 text-3xl font-bold tracking-tight text-slate-900">{{.Tenant.Name}}</h1>
             <p class="mt-2 text-sm text-slate-500">管理成员、邀请、租户状态和该租户下的同步任务。</p>
         </div>
@@ -13,9 +15,6 @@
             <span class="rounded-full bg-orange-50 px-3 py-1 text-orange-600">Slug: {{.Tenant.Slug}}</span>
         </div>
     </div>
-
-    {{if .Error}}<div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{{.Error}}</div>{{end}}
-    {{if .Info}}<div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{{.Info}}</div>{{end}}
 
     <div class="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <div class="space-y-6">

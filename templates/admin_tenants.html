@@ -1,22 +1,15 @@
 {{define "title"}}{{.Title}}{{end}}
 
-{{define "content"}}
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+{{define "content"}}{{template "admin_shell" .}}{{end}}
+
+{{define "admin_content"}}
+<section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
     <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-            <div class="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-1.5 text-sm font-medium text-orange-600">平台管理员后台</div>
-            <h1 class="mt-4 text-3xl font-bold tracking-tight text-slate-900">租户管理</h1>
+            <h2 class="text-3xl font-bold tracking-tight text-slate-900">租户管理</h2>
             <p class="mt-2 text-sm text-slate-500">创建租户、查看状态，并进入详情页管理成员和邀请。</p>
         </div>
-        <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-orange-200 hover:text-orange-600">返回业务页 <i class="fas fa-arrow-right text-xs"></i></a>
     </div>
-
-    {{if .Error}}
-    <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{{.Error}}</div>
-    {{end}}
-    {{if .Info}}
-    <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{{.Info}}</div>
-    {{end}}
 
     <div class="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
         <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
@@ -71,5 +64,5 @@
             </div>
         </section>
     </div>
-</div>
+</section>
 {{end}}

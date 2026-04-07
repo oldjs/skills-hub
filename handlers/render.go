@@ -18,21 +18,26 @@ var templates map[string]*template.Template
 func InitTemplates(templateDir string) {
 	templates = make(map[string]*template.Template)
 	funcMap := template.FuncMap{
-		"split":       strings.Split,
-		"categories":  categoryList,
-		"formatDate":  formatDate,
-		"maskEmail":   maskEmail,
-		"formatTime":  formatTime,
-		"firstChar":   firstChar,
-		"seq":         seq,
-		"parseInt":    parseIntFromStr,
-		"roundRating": roundRating,
+		"split":         strings.Split,
+		"categories":    categoryList,
+		"formatDate":    formatDate,
+		"maskEmail":     maskEmail,
+		"formatTime":    formatTime,
+		"formatTimePtr": formatTimePtr,
+		"firstChar":     firstChar,
+		"seq":           seq,
+		"parseInt":      parseIntFromStr,
+		"roundRating":   roundRating,
 	}
 	basePath := filepath.Join(templateDir, "layout.html")
-	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
+	adminShellPath := filepath.Join(templateDir, "admin_shell.html")
+	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
 
 	for _, page := range pages {
 		files := []string{basePath, filepath.Join(templateDir, page)}
+		if strings.HasPrefix(page, "admin_") {
+			files = []string{basePath, adminShellPath, filepath.Join(templateDir, page)}
+		}
 		t, err := template.New("layout.html").Funcs(funcMap).ParseFiles(files...)
 		if err != nil {
 			log.Fatalf("Failed to parse template %s: %v", page, err)
@@ -115,6 +120,7 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	target["Query"] = data.Query
 	target["Category"] = data.Category
 	target["SortBy"] = data.SortBy
+	target["StatusFilter"] = data.StatusFilter
 	target["CurrentPage"] = data.CurrentPage
 	target["Skill"] = data.Skill
 	target["Comments"] = data.Comments
@@ -123,6 +129,7 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	target["CategoryCount"] = data.CategoryCount
 	target["Error"] = data.Error
 	target["Info"] = data.Info
+	target["AdminSection"] = data.AdminSection
 	if data.Tenant != nil {
 		target["Tenant"] = data.Tenant
 	}
@@ -135,6 +142,25 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	if data.Invites != nil {
 		target["Invites"] = data.Invites
 	}
+	if data.AdminStats != nil {
+		target["AdminStats"] = data.AdminStats
+		target["PendingReviewCount"] = data.AdminStats.PendingSkills
+	}
+	if data.AdminSkills != nil {
+		target["AdminSkills"] = data.AdminSkills
+	}
+	if data.AdminUsers != nil {
+		target["AdminUsers"] = data.AdminUsers
+	}
+	if data.AdminComments != nil {
+		target["AdminComments"] = data.AdminComments
+	}
+	if data.AdminLogs != nil {
+		target["AdminLogs"] = data.AdminLogs
+	}
+	if data.AdminSkill != nil {
+		target["AdminSkill"] = data.AdminSkill
+	}
 }
 
 type PageData struct {
@@ -144,6 +170,7 @@ type PageData struct {
 	Query         string
 	Category      string
 	SortBy        string // 排序方式：score, rating, latest
+	StatusFilter  string
 	CurrentPage   string
 	Skill         *models.Skill
 	Comments      []models.SkillComment // 评论列表
@@ -152,10 +179,17 @@ type PageData struct {
 	CategoryCount int
 	Error         string
 	Info          string
+	AdminSection  string
 	Tenant        *models.Tenant
 	Tenants       []models.Tenant
 	Members       []models.TenantMember
 	Invites       []models.TenantInvite
+	AdminStats    *models.AdminDashboardStats
+	AdminSkills   []models.AdminSkill
+	AdminUsers    []models.AdminUser
+	AdminComments []models.AdminComment
+	AdminLogs     []models.AdminActionLog
+	AdminSkill    *models.AdminSkill
 }
 
 func categoryList(value string) []string {
@@ -196,6 +230,13 @@ func formatTime(t time.Time) string {
 		return "-"
 	}
 	return t.Format("2006-01-02 15:04")
+}
+
+func formatTimePtr(t *time.Time) string {
+	if t == nil {
+		return "-"
+	}
+	return formatTime(*t)
 }
 
 // 生成 1~n 的序列，模板里用来渲染星星

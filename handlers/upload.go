@@ -29,6 +29,8 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		data := PageData{
 			Title:       "上传 Skill - Skills Hub",
 			CurrentPage: "upload",
+			Info:        r.URL.Query().Get("info"),
+			Error:       r.URL.Query().Get("error"),
 		}
 		RenderTemplate(w, r, "upload.html", data)
 		return
@@ -124,7 +126,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 存数据库
-	skill, err := db.SaveUploadedSkill(sess.CurrentTenantID, slug, meta.Name, meta.Description, skillMD, meta.Version, categories, meta.Author)
+	_, err = db.SaveUploadedSkill(sess.CurrentTenantID, slug, meta.Name, meta.Description, skillMD, meta.Version, categories, meta.Author)
 	if err != nil {
 		log.Printf("save uploaded skill failed: %v", err)
 		if strings.Contains(err.Error(), "已存在") {
@@ -135,8 +137,8 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 上传成功，跳到详情页
-	http.Redirect(w, r, "/skill?slug="+skill.Slug, http.StatusSeeOther)
+	// 上传后先回到上传页，避免用户点进还没审核通过的详情页看到 404。
+	http.Redirect(w, r, "/upload?info=Skill 已提交审核，管理员通过后会在前台展示", http.StatusSeeOther)
 }
 
 // 渲染上传页面带错误信息

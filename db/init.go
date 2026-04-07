@@ -47,6 +47,10 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateAddSkillReviewColumns(); err != nil {
+			return
+		}
+
 		if err = createIndexes(); err != nil {
 			return
 		}
@@ -133,10 +137,15 @@ func createCoreTables() error {
 			author TEXT NOT NULL DEFAULT '',
 			download_count INTEGER NOT NULL DEFAULT 0,
 			source TEXT NOT NULL DEFAULT 'clawhub',
+			review_status TEXT NOT NULL DEFAULT 'approved',
+			review_note TEXT NOT NULL DEFAULT '',
+			reviewed_by INTEGER,
+			reviewed_at DATETIME,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE (tenant_id, slug),
-			FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+			FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+			FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS sync_log (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -173,6 +182,16 @@ func createCoreTables() error {
 			FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)`,
+		`CREATE TABLE IF NOT EXISTS admin_action_logs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			admin_user_id INTEGER NOT NULL,
+			action TEXT NOT NULL,
+			target_type TEXT NOT NULL DEFAULT '',
+			target_id INTEGER NOT NULL DEFAULT 0,
+			details TEXT NOT NULL DEFAULT '',
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
 	}
 
 	for _, statement := range statements {
@@ -196,6 +215,7 @@ func createIndexes() error {
 		`CREATE INDEX IF NOT EXISTS idx_skills_tenant_display_name ON skills(tenant_id, display_name)`,
 		`CREATE INDEX IF NOT EXISTS idx_skills_tenant_score_name ON skills(tenant_id, score DESC, display_name ASC)`,
 		`CREATE INDEX IF NOT EXISTS idx_skills_tenant_categories ON skills(tenant_id, categories)`,
+		`CREATE INDEX IF NOT EXISTS idx_skills_tenant_review_status ON skills(tenant_id, review_status)`,
 		`CREATE INDEX IF NOT EXISTS idx_sync_log_tenant_synced_at ON sync_log(tenant_id, synced_at DESC)`,
 		// 评分表索引
 		`CREATE INDEX IF NOT EXISTS idx_skill_ratings_skill ON skill_ratings(tenant_id, skill_id)`,
@@ -203,6 +223,8 @@ func createIndexes() error {
 		// 评论表索引
 		`CREATE INDEX IF NOT EXISTS idx_skill_comments_skill ON skill_comments(tenant_id, skill_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_skill_comments_created ON skill_comments(skill_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_admin_action_logs_created ON admin_action_logs(created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_admin_action_logs_admin_user_id ON admin_action_logs(admin_user_id, created_at DESC)`,
 	}
 
 	for _, statement := range statements {
@@ -406,6 +428,38 @@ func migrateAddDownloadCountColumn() error {
 	if _, err := database.Exec(`ALTER TABLE skills ADD COLUMN download_count INTEGER NOT NULL DEFAULT 0`); err != nil {
 		log.Printf("添加 download_count 列失败（可能已存在）: %v", err)
 	}
+	return nil
+}
+
+func migrateAddSkillReviewColumns() error {
+	columns := []struct {
+		name        string
+		statement   string
+		backfillSQL string
+	}{
+		{name: "review_status", statement: `ALTER TABLE skills ADD COLUMN review_status TEXT NOT NULL DEFAULT 'approved'`, backfillSQL: `UPDATE skills SET review_status = 'approved' WHERE COALESCE(review_status, '') = ''`},
+		{name: "review_note", statement: `ALTER TABLE skills ADD COLUMN review_note TEXT NOT NULL DEFAULT ''`},
+		{name: "reviewed_by", statement: `ALTER TABLE skills ADD COLUMN reviewed_by INTEGER`},
+		{name: "reviewed_at", statement: `ALTER TABLE skills ADD COLUMN reviewed_at DATETIME`},
+	}
+
+	for _, column := range columns {
+		hasColumn, err := tableHasColumn("skills", column.name)
+		if err != nil {
+			return err
+		}
+		if !hasColumn {
+			if _, err := database.Exec(column.statement); err != nil {
+				log.Printf("添加 %s 列失败（可能已存在）: %v", column.name, err)
+			}
+		}
+		if column.backfillSQL != "" {
+			if _, err := database.Exec(column.backfillSQL); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 

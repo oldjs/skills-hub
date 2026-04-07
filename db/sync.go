@@ -154,8 +154,8 @@ func saveSkills(tenantID int64, skills []models.Skill) (int, error) {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO skills (tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, author, source, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		INSERT INTO skills (tenant_id, slug, display_name, summary, score, source_updated_at, version, categories, author, source, review_status, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', CURRENT_TIMESTAMP)
 		ON CONFLICT(tenant_id, slug) DO UPDATE SET
 			display_name = excluded.display_name,
 			summary = excluded.summary,
@@ -165,6 +165,7 @@ func saveSkills(tenantID int64, skills []models.Skill) (int, error) {
 			categories = excluded.categories,
 			author = excluded.author,
 			source = excluded.source,
+			review_status = CASE WHEN skills.source = 'upload' THEN skills.review_status ELSE 'approved' END,
 			updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
@@ -264,7 +265,7 @@ func containsStr(slice []string, item string) bool {
 func GetAllSkills(tenantID int64) ([]models.Skill, error) {
 	return querySkills(`
 		SELECT id, tenant_id, slug, display_name, summary, content, score, source_updated_at, version, categories, source
-		FROM skills WHERE tenant_id = ?
+		FROM skills WHERE tenant_id = ? AND (source != 'upload' OR review_status = 'approved')
 		ORDER BY score DESC, display_name ASC
 	`, tenantID)
 }
@@ -274,10 +275,23 @@ func SearchSkills(tenantID int64, query string) ([]models.Skill, error) {
 }
 
 func GetSkillBySlug(tenantID int64, slug string) (*models.Skill, error) {
-	row := GetDB().QueryRow(`
+	return getSkillBySlug(tenantID, slug, true)
+}
+
+func GetSkillBySlugAnyStatus(tenantID int64, slug string) (*models.Skill, error) {
+	return getSkillBySlug(tenantID, slug, false)
+}
+
+func getSkillBySlug(tenantID int64, slug string, onlyApprovedUploads bool) (*models.Skill, error) {
+	query := `
 		SELECT id, tenant_id, slug, display_name, summary, content, score, source_updated_at, version, categories, source
 		FROM skills WHERE tenant_id = ? AND slug = ?
-	`, tenantID, slug)
+	`
+	if onlyApprovedUploads {
+		query += ` AND (source != 'upload' OR review_status = 'approved')`
+	}
+
+	row := GetDB().QueryRow(query, tenantID, slug)
 
 	var skill models.Skill
 	var updatedAt int64
@@ -302,7 +316,7 @@ func GetFilteredSkills(tenantID int64, query, category, sortBy string) ([]models
 			   COALESCE(AVG(r.score), 0) as avg_rating, COUNT(r.id) as rating_count
 		FROM skills s
 		LEFT JOIN skill_ratings r ON r.skill_id = s.id AND r.tenant_id = s.tenant_id
-		WHERE s.tenant_id = ?
+		WHERE s.tenant_id = ? AND (s.source != 'upload' OR s.review_status = 'approved')
 	`
 	args := []interface{}{tenantID}
 
@@ -379,7 +393,7 @@ func querySkills(statement string, args ...interface{}) ([]models.Skill, error) 
 }
 
 func GetCategories(tenantID int64) ([]string, error) {
-	rows, err := GetDB().Query(`SELECT DISTINCT categories FROM skills WHERE tenant_id = ? AND categories != ''`, tenantID)
+	rows, err := GetDB().Query(`SELECT DISTINCT categories FROM skills WHERE tenant_id = ? AND categories != '' AND (source != 'upload' OR review_status = 'approved')`, tenantID)
 	if err != nil {
 		return nil, err
 	}

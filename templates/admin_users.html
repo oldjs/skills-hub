@@ -1,0 +1,41 @@
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}{{template "admin_shell" .}}{{end}}
+
+{{define "admin_content"}}
+<section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+    <div>
+        <h2 class="text-3xl font-bold tracking-tight text-slate-900">用户管理</h2>
+        <p class="mt-2 text-sm text-slate-500">查看用户状态、租户数量，并启用或禁用账户。</p>
+    </div>
+
+    <div class="mt-6 space-y-4">
+        {{range .AdminUsers}}
+        <article class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="text-lg font-semibold text-slate-900">{{if .DisplayName}}{{.DisplayName}}{{else}}{{.Email}}{{end}}</h3>
+                        <span class="rounded-full px-2.5 py-1 text-xs font-medium {{if eq .Status "active"}}bg-emerald-50 text-emerald-600{{else}}bg-red-50 text-red-600{{end}}">{{.Status}}</span>
+                        {{if .IsPlatformAdmin}}<span class="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-600">platform_admin</span>{{end}}
+                    </div>
+                    <div class="mt-2 text-sm text-slate-500">{{.Email}}</div>
+                    <div class="mt-2 text-sm text-slate-500">加入租户 {{.TenantCount}} 个 · 创建于 {{formatDate .CreatedAt}} · 最近登录 {{formatTimePtr .LastLoginAt}}</div>
+                </div>
+                <form action="/admin/user/update" method="POST" class="flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                    <input type="hidden" name="user_id" value="{{.ID}}">
+                    <select name="status" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
+                        <option value="active" {{if eq .Status "active"}}selected{{end}}>active</option>
+                        <option value="disabled" {{if eq .Status "disabled"}}selected{{end}}>disabled</option>
+                    </select>
+                    <button type="submit" class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800">保存状态</button>
+                </form>
+            </div>
+        </article>
+        {{else}}
+        <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">当前没有用户数据。</div>
+        {{end}}
+    </div>
+</section>
+{{end}}

@@ -19,7 +19,7 @@ func SaveUploadedSkill(tenantID int64, slug, displayName, summary, content, vers
 	author = security.EscapePlainText(author)
 
 	// 先看有没有同 slug 的
-	existing, err := GetSkillBySlug(tenantID, slug)
+	existing, err := GetSkillBySlugAnyStatus(tenantID, slug)
 	if err != nil {
 		return nil, err
 	}
@@ -29,8 +29,8 @@ func SaveUploadedSkill(tenantID int64, slug, displayName, summary, content, vers
 
 	now := time.Now()
 	result, err := GetDB().Exec(`
-		INSERT INTO skills (tenant_id, slug, display_name, summary, content, score, source_updated_at, version, categories, author, source, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 'upload', ?, ?)
+		INSERT INTO skills (tenant_id, slug, display_name, summary, content, score, source_updated_at, version, categories, author, source, review_status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 'upload', 'pending', ?, ?)
 	`, tenantID, slug, displayName, summary, content, now.Unix(), version, categories, author, now, now)
 	if err != nil {
 		return nil, err

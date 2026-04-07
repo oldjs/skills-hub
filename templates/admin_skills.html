@@ -1,0 +1,44 @@
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}{{template "admin_shell" .}}{{end}}
+
+{{define "admin_content"}}
+<section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <h2 class="text-3xl font-bold tracking-tight text-slate-900">Skills 审核</h2>
+            <p class="mt-2 text-sm text-slate-500">查看待审核内容，进入详情页完成编辑、通过或拒绝。</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="/admin/skills?status=pending" class="rounded-2xl px-4 py-2 text-sm font-medium {{if eq .StatusFilter "pending"}}bg-orange-500 text-white{{else}}border border-slate-200 bg-white text-slate-700{{end}}">待审核</a>
+            <a href="/admin/skills?status=approved" class="rounded-2xl px-4 py-2 text-sm font-medium {{if eq .StatusFilter "approved"}}bg-orange-500 text-white{{else}}border border-slate-200 bg-white text-slate-700{{end}}">已通过</a>
+            <a href="/admin/skills?status=rejected" class="rounded-2xl px-4 py-2 text-sm font-medium {{if eq .StatusFilter "rejected"}}bg-orange-500 text-white{{else}}border border-slate-200 bg-white text-slate-700{{end}}">已拒绝</a>
+            <a href="/admin/skills?status=all" class="rounded-2xl px-4 py-2 text-sm font-medium {{if eq .StatusFilter "all"}}bg-orange-500 text-white{{else}}border border-slate-200 bg-white text-slate-700{{end}}">全部</a>
+        </div>
+    </div>
+
+    <div class="mt-6 space-y-4">
+        {{range .AdminSkills}}
+        <article class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="text-lg font-semibold text-slate-900">{{.DisplayName}}</h3>
+                        <span class="rounded-full px-2.5 py-1 text-xs font-medium {{if eq .ReviewStatus "approved"}}bg-emerald-50 text-emerald-600{{else if eq .ReviewStatus "rejected"}}bg-red-50 text-red-600{{else}}bg-orange-100 text-orange-600{{end}}">{{.ReviewStatus}}</span>
+                        {{if .Version}}<span class="rounded-full bg-slate-200 px-2.5 py-1 text-xs text-slate-600">v{{.Version}}</span>{{end}}
+                    </div>
+                    <div class="mt-2 text-sm text-slate-500">租户 {{.TenantName}} · Slug {{.Slug}} · 来源 {{.Source}}</div>
+                    <p class="mt-3 text-sm leading-7 text-slate-600">{{if .Summary}}{{.Summary}}{{else}}暂无摘要{{end}}</p>
+                    {{if .ReviewNote}}<div class="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">审核备注：{{.ReviewNote}}</div>{{end}}
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/admin/skill?id={{.ID}}" class="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-600 transition hover:border-orange-300 hover:bg-orange-100">查看并编辑 <i class="fas fa-arrow-right text-xs"></i></a>
+                </div>
+            </div>
+        </article>
+        {{else}}
+        <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">当前筛选条件下没有 Skills。</div>
+        {{end}}
+    </div>
+</section>
+{{end}}

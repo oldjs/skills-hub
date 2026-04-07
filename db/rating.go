@@ -12,7 +12,7 @@ func AddRating(tenantID, skillID, userID int64, score int) error {
 		INSERT INTO skill_ratings (tenant_id, skill_id, user_id, score)
 		SELECT ?, s.id, ?, ?
 		FROM skills s
-		WHERE s.tenant_id = ? AND s.id = ?
+		WHERE s.tenant_id = ? AND s.id = ? AND (s.source != 'upload' OR s.review_status = 'approved')
 		ON CONFLICT(tenant_id, skill_id, user_id) DO UPDATE SET
 			score = excluded.score
 	`, tenantID, userID, score, tenantID, skillID)
