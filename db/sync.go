@@ -309,13 +309,73 @@ func getSkillBySlug(tenantID int64, slug string, onlyApprovedUploads bool) (*mod
 
 // sortBy: "score"(默认), "rating", "latest"
 func GetFilteredSkills(tenantID int64, query, category, sortBy string) ([]models.Skill, error) {
-	// 基础查询，左联评分表拿用户评分均值
+	statement, args := buildFilteredSkillsQuery(tenantID, query, category)
+	statement += ` GROUP BY s.id`
+	statement += skillOrderClause(sortBy)
+
+	return querySkillsWithRating(statement, args...)
+}
+
+// GetFilteredSkillsPage 先查总数，再只拿当前页数据。
+func GetFilteredSkillsPage(tenantID int64, query, category, sortBy string, page, perPage int) ([]models.Skill, int, int, error) {
+	countStatement, countArgs := buildFilteredSkillsCountQuery(tenantID, query, category)
+	total, err := countSkills(countStatement, countArgs...)
+	if err != nil {
+		return nil, 0, 1, err
+	}
+
+	if page <= 0 {
+		page = 1
+	}
+	if perPage <= 0 {
+		perPage = 12
+	}
+
+	if total == 0 {
+		return []models.Skill{}, 0, 1, nil
+	}
+
+	totalPages := (total + perPage - 1) / perPage
+	if page > totalPages {
+		page = totalPages
+	}
+
+	offset := (page - 1) * perPage
+	statement, args := buildFilteredSkillsQuery(tenantID, query, category)
+	statement += ` GROUP BY s.id`
+	statement += skillOrderClause(sortBy)
+	statement += ` LIMIT ? OFFSET ?`
+	args = append(args, perPage, offset)
+
+	skills, err := querySkillsWithRating(statement, args...)
+	if err != nil {
+		return nil, 0, 1, err
+	}
+
+	return skills, total, page, nil
+}
+
+func buildFilteredSkillsQuery(tenantID int64, query, category string) (string, []interface{}) {
+	// 基础查询，左联评分表拿用户评分均值。
 	statement := `
 		SELECT s.id, s.tenant_id, s.slug, s.display_name, s.summary, s.content, s.score,
-			   s.source_updated_at, s.version, s.categories, s.source,
-			   COALESCE(AVG(r.score), 0) as avg_rating, COUNT(r.id) as rating_count
+		       s.source_updated_at, s.version, s.categories, s.source,
+		       COALESCE(AVG(r.score), 0) as avg_rating, COUNT(r.id) as rating_count
 		FROM skills s
 		LEFT JOIN skill_ratings r ON r.skill_id = s.id AND r.tenant_id = s.tenant_id
+	`
+	whereClause, args := buildFilteredSkillsWhereClause(tenantID, query, category)
+	return statement + whereClause, args
+}
+
+func buildFilteredSkillsCountQuery(tenantID int64, query, category string) (string, []interface{}) {
+	statement := `SELECT COUNT(*) FROM skills s`
+	whereClause, args := buildFilteredSkillsWhereClause(tenantID, query, category)
+	return statement + whereClause, args
+}
+
+func buildFilteredSkillsWhereClause(tenantID int64, query, category string) (string, []interface{}) {
+	statement := `
 		WHERE s.tenant_id = ? AND (s.source != 'upload' OR s.review_status = 'approved')
 	`
 	args := []interface{}{tenantID}
@@ -330,19 +390,27 @@ func GetFilteredSkills(tenantID int64, query, category, sortBy string) ([]models
 		args = append(args, "%"+category+"%")
 	}
 
-	statement += ` GROUP BY s.id`
+	return statement, args
+}
 
-	// 排序方式
+func skillOrderClause(sortBy string) string {
+	// 排序条件单独拆出来，列表查询和分页查询共用一套。
 	switch sortBy {
 	case "rating":
-		statement += ` ORDER BY avg_rating DESC, s.display_name ASC`
+		return ` ORDER BY avg_rating DESC, s.display_name ASC`
 	case "latest":
-		statement += ` ORDER BY s.created_at DESC, s.display_name ASC`
+		return ` ORDER BY s.created_at DESC, s.display_name ASC`
 	default:
-		statement += ` ORDER BY s.score DESC, s.display_name ASC`
+		return ` ORDER BY s.score DESC, s.display_name ASC`
 	}
+}
 
-	return querySkillsWithRating(statement, args...)
+func countSkills(statement string, args ...interface{}) (int, error) {
+	var total int
+	if err := GetDB().QueryRow(statement, args...).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
 }
 
 // 带评分统计的查询

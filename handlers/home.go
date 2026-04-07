@@ -21,17 +21,15 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageError := ""
+	page, perPage := parsePaginationParams(r)
 
-	skills, err := db.GetAllSkills(sess.CurrentTenantID)
+	skills, totalSkills, currentPage, err := db.GetFilteredSkillsPage(sess.CurrentTenantID, "", "", "", page, perPage)
 	if err != nil {
 		log.Printf("home skills load failed: %v", err)
 		skills = []models.Skill{}
+		totalSkills = 0
+		currentPage = 1
 		pageError = "技能数据加载失败，当前页面展示可能不完整"
-	}
-
-	featuredSkills := skills
-	if len(featuredSkills) > 12 {
-		featuredSkills = featuredSkills[:12]
 	}
 
 	categories, err := db.GetCategories(sess.CurrentTenantID)
@@ -45,10 +43,11 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := PageData{
 		Title:         "Skills Hub - OpenClaw 技能中心",
-		Skills:        featuredSkills,
+		Skills:        skills,
 		Categories:    categories,
 		CurrentPage:   "home",
-		TotalSkills:   len(skills),
+		Pagination:    NewPaginationData(currentPage, perPage, totalSkills),
+		TotalSkills:   totalSkills,
 		CategoryCount: len(categories),
 		Error:         pageError,
 	}

@@ -23,6 +23,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	category := r.URL.Query().Get("category")
 	sortBy := r.URL.Query().Get("sort") // score, rating, latest
+	page, perPage := parsePaginationParams(r)
 	title := "搜索 Skills - Skills Hub"
 	if query != "" && category != "" {
 		title = "搜索: " + query + " / " + category + " - Skills Hub"
@@ -35,14 +36,17 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.Header.Get("Accept"), "application/json") || r.URL.Query().Get("format") == "json" {
 		w.Header().Set("Content-Type", "application/json")
 
-		skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category, sortBy)
+		skills, totalSkills, currentPage, err := db.GetFilteredSkillsPage(sess.CurrentTenantID, query, category, sortBy, page, perPage)
 
 		if err != nil {
 			log.Printf("search json failed: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"skills": []models.Skill{},
-				"error":  "搜索失败，请稍后重试",
+				"skills":   []models.Skill{},
+				"page":     1,
+				"per_page": perPage,
+				"total":    0,
+				"error":    "搜索失败，请稍后重试",
 			})
 			return
 		}
@@ -51,16 +55,22 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 			"skills":   skills,
 			"query":    query,
 			"category": category,
+			"sort":     sortBy,
+			"page":     currentPage,
+			"per_page": perPage,
+			"total":    totalSkills,
 		})
 		return
 	}
 
 	pageError := ""
-	skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category, sortBy)
+	skills, totalSkills, currentPage, err := db.GetFilteredSkillsPage(sess.CurrentTenantID, query, category, sortBy, page, perPage)
 
 	if err != nil {
 		log.Printf("search page failed: %v", err)
 		skills = []models.Skill{}
+		totalSkills = 0
+		currentPage = 1
 		pageError = "搜索服务暂时不可用，已为你展示空结果"
 	}
 
@@ -81,7 +91,8 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		Category:      category,
 		SortBy:        sortBy,
 		CurrentPage:   "search",
-		TotalSkills:   len(skills),
+		Pagination:    NewPaginationData(currentPage, perPage, totalSkills),
+		TotalSkills:   totalSkills,
 		CategoryCount: len(categories),
 		Error:         pageError,
 	}

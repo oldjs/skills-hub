@@ -10,7 +10,7 @@
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div class="max-w-2xl">
             <h1 class="text-3xl font-bold text-slate-900 mb-2">探索发现</h1>
-            <p class="text-slate-500">在 {{.TotalSkills}} 个技能中寻找你需要的智能体能力</p>
+            <p class="text-slate-500">共 {{.TotalSkills}} 个技能{{if and .Pagination (gt .Pagination.TotalPages 0)}}，第 {{.Pagination.Page}} / {{.Pagination.TotalPages}} 页{{end}}</p>
         </div>
 
         <form action="/search" method="GET" class="w-full md:w-96 relative group">
@@ -19,6 +19,9 @@
             {{end}}
             {{if .SortBy}}
             <input type="hidden" name="sort" value="{{.SortBy}}">
+            {{end}}
+            {{if .Pagination}}
+            <input type="hidden" name="per_page" value="{{.Pagination.PerPage}}">
             {{end}}
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-search text-slate-400 group-focus-within:text-orange-500 transition-colors"></i>
@@ -37,7 +40,7 @@
             <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
                 <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">按领域筛选</h3>
 
-                <a href="/search{{if .Query}}?q={{.Query}}{{end}}{{if .SortBy}}{{if .Query}}&{{else}}?{{end}}sort={{.SortBy}}{{end}}"
+                <a href="/search{{if .Query}}?q={{urlquery .Query}}{{end}}{{if .SortBy}}{{if .Query}}&{{else}}?{{end}}sort={{urlquery .SortBy}}{{end}}{{if .Pagination}}{{if or .Query .SortBy}}&{{else}}?{{end}}per_page={{.Pagination.PerPage}}{{end}}"
                    class="flex items-center justify-between px-3 py-2 rounded-md text-sm mb-1 transition-colors {{if not .Category}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
                     <span>全部领域</span>
                     {{if not .Category}}<i class="fas fa-check text-xs"></i>{{end}}
@@ -45,7 +48,7 @@
 
                 <div class="space-y-1 mt-2">
                     {{range .Categories}}
-                    <a href="/search?category={{.}}{{if $.Query}}&q={{$.Query}}{{end}}{{if $.SortBy}}&sort={{$.SortBy}}{{end}}"
+                    <a href="/search?category={{urlquery .}}{{if $.Query}}&q={{urlquery $.Query}}{{end}}{{if $.SortBy}}&sort={{urlquery $.SortBy}}{{end}}{{if $.Pagination}}&per_page={{$.Pagination.PerPage}}{{end}}"
                        class="flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors {{if eq $.Category .}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
                         <span class="truncate pr-2">{{.}}</span>
                         {{if eq $.Category .}}<i class="fas fa-check text-xs"></i>{{end}}
@@ -58,17 +61,17 @@
             <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
                 <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">排序方式</h3>
                 <div class="space-y-1">
-                    <a href="/search?{{if .Query}}q={{.Query}}&{{end}}{{if .Category}}category={{.Category}}&{{end}}sort=score"
+                    <a href="/search?{{if .Query}}q={{urlquery .Query}}&{{end}}{{if .Category}}category={{urlquery .Category}}&{{end}}sort=score{{if .Pagination}}&per_page={{.Pagination.PerPage}}{{end}}"
                        class="flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors {{if or (eq .SortBy "score") (eq .SortBy "")}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
                         <span><i class="fas fa-fire mr-2 text-xs"></i>默认排序</span>
                         {{if or (eq .SortBy "score") (eq .SortBy "")}}<i class="fas fa-check text-xs"></i>{{end}}
                     </a>
-                    <a href="/search?{{if .Query}}q={{.Query}}&{{end}}{{if .Category}}category={{.Category}}&{{end}}sort=rating"
+                    <a href="/search?{{if .Query}}q={{urlquery .Query}}&{{end}}{{if .Category}}category={{urlquery .Category}}&{{end}}sort=rating{{if .Pagination}}&per_page={{.Pagination.PerPage}}{{end}}"
                        class="flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors {{if eq .SortBy "rating"}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
                         <span><i class="fas fa-star mr-2 text-xs"></i>按评分排序</span>
                         {{if eq .SortBy "rating"}}<i class="fas fa-check text-xs"></i>{{end}}
                     </a>
-                    <a href="/search?{{if .Query}}q={{.Query}}&{{end}}{{if .Category}}category={{.Category}}&{{end}}sort=latest"
+                    <a href="/search?{{if .Query}}q={{urlquery .Query}}&{{end}}{{if .Category}}category={{urlquery .Category}}&{{end}}sort=latest{{if .Pagination}}&per_page={{.Pagination.PerPage}}{{end}}"
                        class="flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors {{if eq .SortBy "latest"}}bg-orange-50 text-orange-500 font-medium{{else}}text-slate-600 hover:bg-slate-50{{end}}">
                         <span><i class="fas fa-clock mr-2 text-xs"></i>最新发布</span>
                         {{if eq .SortBy "latest"}}<i class="fas fa-check text-xs"></i>{{end}}
@@ -87,7 +90,7 @@
                 {{if .Query}}
                 <span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded bg-slate-100 text-sm text-slate-700 font-medium border border-slate-200">
                     关键词: {{.Query}}
-                    <a href="/search{{if .Category}}?category={{.Category}}{{end}}{{if .SortBy}}{{if .Category}}&{{else}}?{{end}}sort={{.SortBy}}{{end}}" class="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded transition-colors" title="移除关键词">
+                    <a href="/search{{if .Category}}?category={{urlquery .Category}}{{end}}{{if .SortBy}}{{if .Category}}&{{else}}?{{end}}sort={{urlquery .SortBy}}{{end}}{{if .Pagination}}{{if or .Category .SortBy}}&{{else}}?{{end}}per_page={{.Pagination.PerPage}}{{end}}" class="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded transition-colors" title="移除关键词">
                         <i class="fas fa-times text-xs"></i>
                     </a>
                 </span>
@@ -96,13 +99,13 @@
                 {{if .Category}}
                 <span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded bg-orange-50 text-sm text-orange-600 font-medium border border-orange-100">
                     分类: {{.Category}}
-                    <a href="/search{{if .Query}}?q={{.Query}}{{end}}{{if .SortBy}}{{if .Query}}&{{else}}?{{end}}sort={{.SortBy}}{{end}}" class="p-1 text-orange-400 hover:text-orange-500 hover:bg-orange-100 rounded transition-colors" title="移除分类">
+                    <a href="/search{{if .Query}}?q={{urlquery .Query}}{{end}}{{if .SortBy}}{{if .Query}}&{{else}}?{{end}}sort={{urlquery .SortBy}}{{end}}{{if .Pagination}}{{if or .Query .SortBy}}&{{else}}?{{end}}per_page={{.Pagination.PerPage}}{{end}}" class="p-1 text-orange-400 hover:text-orange-500 hover:bg-orange-100 rounded transition-colors" title="移除分类">
                         <i class="fas fa-times text-xs"></i>
                     </a>
                 </span>
                 {{end}}
 
-                <a href="/search" class="text-sm text-orange-500 hover:text-orange-600 ml-2 font-medium">清除全部</a>
+                <a href="/search{{if .Pagination}}?per_page={{.Pagination.PerPage}}{{end}}" class="text-sm text-orange-500 hover:text-orange-600 ml-2 font-medium">清除全部</a>
             </div>
             {{end}}
 
@@ -165,12 +168,43 @@
                     </div>
                     <h3 class="text-lg font-medium text-slate-900 mb-1">未找到匹配的技能</h3>
                     <p class="text-slate-500 text-sm">尝试更换关键词，或者放宽领域筛选条件</p>
-                    <a href="/search" class="mt-4 text-orange-500 hover:text-orange-600 font-medium text-sm">
+                    <a href="/search{{if .Pagination}}?per_page={{.Pagination.PerPage}}{{end}}" class="mt-4 text-orange-500 hover:text-orange-600 font-medium text-sm">
                         返回全部技能
                     </a>
                 </div>
                 {{end}}
             </div>
+
+            {{with .Pagination}}
+            {{if gt .TotalPages 1}}
+            <div class="mt-6 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-slate-500">显示第 {{.StartItem}}-{{.EndItem}} 条，共 {{.Total}} 条结果</p>
+                <nav class="flex flex-wrap items-center gap-2">
+                    {{if .HasPrev}}
+                    <a href="/search?page={{.PrevPage}}&per_page={{.PerPage}}{{if $.Query}}&q={{urlquery $.Query}}{{end}}{{if $.Category}}&category={{urlquery $.Category}}{{end}}{{if $.SortBy}}&sort={{urlquery $.SortBy}}{{end}}" class="inline-flex items-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:border-orange-200 hover:text-orange-500">上一页</a>
+                    {{else}}
+                    <span class="inline-flex cursor-not-allowed items-center rounded-lg border border-slate-100 px-3 py-2 text-sm font-medium text-slate-300">上一页</span>
+                    {{end}}
+
+                    {{range .Pages}}
+                    {{if eq . 0}}
+                    <span class="px-1 text-slate-300">...</span>
+                    {{else if eq . $.Pagination.Page}}
+                    <span class="inline-flex min-w-10 items-center justify-center rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white">{{.}}</span>
+                    {{else}}
+                    <a href="/search?page={{.}}&per_page={{$.Pagination.PerPage}}{{if $.Query}}&q={{urlquery $.Query}}{{end}}{{if $.Category}}&category={{urlquery $.Category}}{{end}}{{if $.SortBy}}&sort={{urlquery $.SortBy}}{{end}}" class="inline-flex min-w-10 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:border-orange-200 hover:text-orange-500">{{.}}</a>
+                    {{end}}
+                    {{end}}
+
+                    {{if .HasNext}}
+                    <a href="/search?page={{.NextPage}}&per_page={{.PerPage}}{{if $.Query}}&q={{urlquery $.Query}}{{end}}{{if $.Category}}&category={{urlquery $.Category}}{{end}}{{if $.SortBy}}&sort={{urlquery $.SortBy}}{{end}}" class="inline-flex items-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:border-orange-200 hover:text-orange-500">下一页</a>
+                    {{else}}
+                    <span class="inline-flex cursor-not-allowed items-center rounded-lg border border-slate-100 px-3 py-2 text-sm font-medium text-slate-300">下一页</span>
+                    {{end}}
+                </nav>
+            </div>
+            {{end}}
+            {{end}}
         </main>
     </div>
 </div>

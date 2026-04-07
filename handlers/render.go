@@ -124,6 +124,9 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	target["SortBy"] = data.SortBy
 	target["StatusFilter"] = data.StatusFilter
 	target["CurrentPage"] = data.CurrentPage
+	if data.Pagination != nil {
+		target["Pagination"] = data.Pagination
+	}
 	target["Skill"] = data.Skill
 	target["Comments"] = data.Comments
 	target["UserRating"] = data.UserRating
@@ -178,6 +181,7 @@ type PageData struct {
 	Query           string
 	Category        string
 	SortBy          string // 排序方式：score, rating, latest
+	Pagination      *PaginationData
 	StatusFilter    string
 	CurrentPage     string
 	Skill           *models.Skill
@@ -200,6 +204,123 @@ type PageData struct {
 	AdminSkill      *models.AdminSkill
 	APIKeys         []models.APIKey
 	GeneratedAPIKey string
+}
+
+type PaginationData struct {
+	Page       int
+	PerPage    int
+	Total      int
+	TotalPages int
+	StartItem  int
+	EndItem    int
+	HasPrev    bool
+	HasNext    bool
+	PrevPage   int
+	NextPage   int
+	Pages      []int
+}
+
+const (
+	defaultPerPage = 12
+	maxPerPage     = 48
+)
+
+func parsePaginationParams(r *http.Request) (int, int) {
+	page := parsePositiveInt(r.URL.Query().Get("page"), 1)
+	perPage := parsePositiveInt(r.URL.Query().Get("per_page"), defaultPerPage)
+	if perPage > maxPerPage {
+		perPage = maxPerPage
+	}
+	return page, perPage
+}
+
+func NewPaginationData(page, perPage, total int) *PaginationData {
+	if perPage <= 0 {
+		perPage = defaultPerPage
+	}
+
+	pagination := &PaginationData{
+		Page:    1,
+		PerPage: perPage,
+		Total:   total,
+	}
+
+	if total <= 0 {
+		return pagination
+	}
+
+	totalPages := (total + perPage - 1) / perPage
+	if page < 1 {
+		page = 1
+	}
+	if page > totalPages {
+		page = totalPages
+	}
+
+	startItem := (page-1)*perPage + 1
+	endItem := startItem + perPage - 1
+	if endItem > total {
+		endItem = total
+	}
+
+	pagination.Page = page
+	pagination.TotalPages = totalPages
+	pagination.StartItem = startItem
+	pagination.EndItem = endItem
+	pagination.HasPrev = page > 1
+	pagination.HasNext = page < totalPages
+	pagination.Pages = buildPaginationPages(page, totalPages)
+	if pagination.HasPrev {
+		pagination.PrevPage = page - 1
+	}
+	if pagination.HasNext {
+		pagination.NextPage = page + 1
+	}
+
+	return pagination
+}
+
+func buildPaginationPages(currentPage, totalPages int) []int {
+	if totalPages <= 0 {
+		return nil
+	}
+	if totalPages <= 7 {
+		pages := make([]int, 0, totalPages)
+		for page := 1; page <= totalPages; page++ {
+			pages = append(pages, page)
+		}
+		return pages
+	}
+
+	pages := []int{1}
+	windowStart := currentPage - 1
+	windowEnd := currentPage + 1
+	if currentPage <= 3 {
+		windowStart = 2
+		windowEnd = 4
+	}
+	if currentPage >= totalPages-2 {
+		windowStart = totalPages - 3
+		windowEnd = totalPages - 1
+	}
+	if windowStart < 2 {
+		windowStart = 2
+	}
+	if windowEnd > totalPages-1 {
+		windowEnd = totalPages - 1
+	}
+	if windowStart > 2 {
+		pages = append(pages, 0)
+	}
+	for page := windowStart; page <= windowEnd; page++ {
+		pages = append(pages, page)
+	}
+	if windowEnd < totalPages-1 {
+		pages = append(pages, 0)
+	}
+	pages = append(pages, totalPages)
+
+	return pages
 }
 
 func categoryList(value string) []string {
