@@ -8,13 +8,26 @@ import (
 
 // 添加或更新评分，每用户每skill只能评一次
 func AddRating(tenantID, skillID, userID int64, score int) error {
-	_, err := GetDB().Exec(`
+	result, err := GetDB().Exec(`
 		INSERT INTO skill_ratings (tenant_id, skill_id, user_id, score)
-		VALUES (?, ?, ?, ?)
+		SELECT ?, s.id, ?, ?
+		FROM skills s
+		WHERE s.tenant_id = ? AND s.id = ?
 		ON CONFLICT(tenant_id, skill_id, user_id) DO UPDATE SET
 			score = excluded.score
-	`, tenantID, skillID, userID, score)
-	return err
+	`, tenantID, userID, score, tenantID, skillID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrSkillNotFound
+	}
+	return nil
 }
 
 // 查当前用户对某个 skill 的评分

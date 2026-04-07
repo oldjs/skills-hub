@@ -39,6 +39,10 @@ func RateSkillHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := db.AddRating(sess.CurrentTenantID, skillID, sess.UserID, score); err != nil {
+		if db.IsSkillNotFound(err) {
+			http.Error(w, "Skill 不存在或已无权访问", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "评分失败", http.StatusInternalServerError)
 		return
 	}

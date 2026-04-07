@@ -56,6 +56,10 @@ func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := db.AddComment(sess.CurrentTenantID, skillID, sess.UserID, content); err != nil {
+		if db.IsSkillNotFound(err) {
+			http.Error(w, "Skill 不存在或已无权访问", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "评论失败", http.StatusInternalServerError)
 		return
 	}

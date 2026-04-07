@@ -28,16 +28,31 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pageInfo := ""
+
 	// 拉评分统计
-	avg, count, _ := db.GetSkillRatingStats(sess.CurrentTenantID, skill.ID)
+	avg, count, err := db.GetSkillRatingStats(sess.CurrentTenantID, skill.ID)
+	if err != nil {
+		log.Printf("skill rating stats failed: %v", err)
+		pageInfo = "部分互动数据加载失败，已展示基础信息"
+	}
 	skill.AvgRating = avg
 	skill.RatingCount = count
 
 	// 当前用户的评分
-	userRating, _ := db.GetUserRating(sess.CurrentTenantID, skill.ID, sess.UserID)
+	userRating, err := db.GetUserRating(sess.CurrentTenantID, skill.ID, sess.UserID)
+	if err != nil {
+		log.Printf("user rating load failed: %v", err)
+		pageInfo = "部分互动数据加载失败，已展示基础信息"
+	}
 
 	// 拉评论列表
-	comments, _ := db.GetSkillComments(sess.CurrentTenantID, skill.ID)
+	comments, err := db.GetSkillComments(sess.CurrentTenantID, skill.ID)
+	if err != nil {
+		log.Printf("skill comments load failed: %v", err)
+		comments = []models.SkillComment{}
+		pageInfo = "评论暂时加载失败，请稍后刷新重试"
+	}
 	if comments == nil {
 		comments = []models.SkillComment{}
 	}
@@ -60,7 +75,14 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	categories, _ := db.GetCategories(sess.CurrentTenantID)
+	categories, err := db.GetCategories(sess.CurrentTenantID)
+	if err != nil {
+		log.Printf("skill categories load failed: %v", err)
+		categories = []string{}
+		if pageInfo == "" {
+			pageInfo = "部分页面信息加载失败，已展示核心内容"
+		}
+	}
 
 	// 检查是否有来自评论验证码失败的错误
 	errParam := r.URL.Query().Get("error")
@@ -77,6 +99,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		Comments:    comments,
 		UserRating:  userRating,
 		Error:       errMsg,
+		Info:        pageInfo,
 	}
 
 	RenderTemplate(w, r, "skill.html", data)

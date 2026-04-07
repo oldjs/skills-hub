@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -35,37 +36,62 @@ func SyncAllActiveTenants() {
 	}
 
 	for _, tenantID := range tenantIDs {
+		if !StartTenantSync(tenantID) {
+			log.Printf("租户 %d 已在同步中，跳过本轮自动同步", tenantID)
+			continue
+		}
 		if err := SyncFromClawHub(tenantID); err != nil {
 			log.Printf("租户 %d 自动同步失败: %v", tenantID, err)
 		}
+		FinishTenantSync(tenantID)
 	}
 }
 
 func SyncFromClawHub(tenantID int64) error {
 	log.Printf("Starting sync from ClawHub for tenant %d", tenantID)
 	totalSynced := 0
+	var syncErrors []string
 
 	for _, keyword := range SyncKeywords {
 		results, err := fetchFromClawHub(keyword)
 		if err != nil {
 			log.Printf("Error fetching '%s': %v", keyword, err)
+			syncErrors = append(syncErrors, fmt.Sprintf("%s: %v", keyword, err))
 			continue
 		}
 
-		synced := saveSkills(tenantID, results)
+		synced, err := saveSkills(tenantID, results)
+		if err != nil {
+			log.Printf("Error saving '%s': %v", keyword, err)
+			syncErrors = append(syncErrors, fmt.Sprintf("%s: %v", keyword, err))
+			continue
+		}
 		totalSynced += synced
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if err := logSync(tenantID, totalSynced, strings.Join(SyncKeywords, ","), "success", ""); err != nil {
+	status := "success"
+	message := ""
+	if len(syncErrors) > 0 {
+		status = "failed"
+		message = strings.Join(syncErrors, "; ")
+		if len(message) > 500 {
+			message = message[:500]
+		}
+	}
+
+	if err := logSync(tenantID, totalSynced, strings.Join(SyncKeywords, ","), status, message); err != nil {
 		return err
+	}
+	if len(syncErrors) > 0 {
+		return fmt.Errorf("sync completed with %d errors", len(syncErrors))
 	}
 	log.Printf("Sync completed for tenant %d. Total skills synced: %d", tenantID, totalSynced)
 	return nil
 }
 
 func fetchFromClawHub(keyword string) ([]models.Skill, error) {
-	url := fmt.Sprintf("%s?q=%s&limit=20", ClawHubBaseURL, keyword)
+	url := fmt.Sprintf("%s?q=%s&limit=20", ClawHubBaseURL, url.QueryEscape(keyword))
 
 	resp, err := fetchHTTP(url)
 	if err != nil {
@@ -116,14 +142,14 @@ func fetchHTTP(url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func saveSkills(tenantID int64, skills []models.Skill) int {
+func saveSkills(tenantID int64, skills []models.Skill) (int, error) {
 	if len(skills) == 0 {
-		return 0
+		return 0, nil
 	}
 
 	tx, err := GetDB().Begin()
 	if err != nil {
-		return 0
+		return 0, err
 	}
 	defer tx.Rollback()
 
@@ -142,7 +168,7 @@ func saveSkills(tenantID int64, skills []models.Skill) int {
 			updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
-		return 0
+		return 0, err
 	}
 	defer stmt.Close()
 
@@ -158,11 +184,15 @@ func saveSkills(tenantID int64, skills []models.Skill) int {
 
 		if _, err := stmt.Exec(tenantID, skill.Slug, displayName, summary, skill.Score, skill.UpdatedAt.Unix(), version, categories, author, source); err == nil {
 			count++
+		} else {
+			log.Printf("保存 skill %s 失败: %v", skill.Slug, err)
 		}
 	}
 
-	_ = tx.Commit()
-	return count
+	if err := tx.Commit(); err != nil {
+		return count, err
+	}
+	return count, nil
 }
 
 func logSync(tenantID int64, count int, keywords, status, message string) error {
@@ -402,6 +432,23 @@ var (
 	syncState = make(map[int64]bool)
 )
 
+func StartTenantSync(tenantID int64) bool {
+	syncMutex.Lock()
+	defer syncMutex.Unlock()
+	if syncState[tenantID] {
+		return false
+	}
+	// 原子置位，手动同步和自动同步就不会抢到同一个租户了。
+	syncState[tenantID] = true
+	return true
+}
+
+func FinishTenantSync(tenantID int64) {
+	syncMutex.Lock()
+	defer syncMutex.Unlock()
+	delete(syncState, tenantID)
+}
+
 func IsSyncing(tenantID int64) bool {
 	syncMutex.Lock()
 	defer syncMutex.Unlock()
@@ -409,11 +456,9 @@ func IsSyncing(tenantID int64) bool {
 }
 
 func SetSyncing(tenantID int64, status bool) {
-	syncMutex.Lock()
-	defer syncMutex.Unlock()
 	if status {
-		syncState[tenantID] = true
+		StartTenantSync(tenantID)
 		return
 	}
-	delete(syncState, tenantID)
+	FinishTenantSync(tenantID)
 }

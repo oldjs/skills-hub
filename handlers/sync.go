@@ -21,7 +21,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"status": "error", "message": "Only POST method is allowed"})
 		return
 	}
-	if db.IsSyncing(sess.CurrentTenantID) {
+	if !db.StartTenantSync(sess.CurrentTenantID) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"status": "running", "message": "Sync is already in progress"})
 		return
@@ -29,8 +29,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 
 	go func(tenantID int64) {
 		log.Printf("Manual sync triggered via API for tenant %d", tenantID)
-		db.SetSyncing(tenantID, true)
-		defer db.SetSyncing(tenantID, false)
+		defer db.FinishTenantSync(tenantID)
 		if err := db.SyncFromClawHub(tenantID); err != nil {
 			log.Printf("Sync failed: %v", err)
 		}

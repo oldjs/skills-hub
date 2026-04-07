@@ -2,6 +2,10 @@
 
 {{define "content"}}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    {{if .Error}}
+    <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{{.Error}}</div>
+    {{end}}
+
     <section class="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm">
         <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiNlMmU4ZjAiLz48L3N2Zz4=')] opacity-50"></div>
         <div class="relative px-8 py-12 sm:px-12 sm:py-16 flex flex-col lg:flex-row items-center justify-between gap-10">
@@ -30,6 +34,7 @@
                             立即探索
                         </button>
                     </div>
+                    <div id="search-suggestions" class="hidden absolute left-0 right-0 top-[calc(100%+10px)] z-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"></div>
                 </form>
             </div>
             
@@ -78,7 +83,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {{range .Skills}}
-            <article class="group bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg hover:border-orange-200 transition-all duration-300 flex flex-col h-full">
+            <article class="group relative bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg hover:border-orange-200 transition-all duration-300 flex flex-col h-full">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center text-xl group-hover:bg-orange-500 group-hover:text-white transition-colors">
                         <i class="fas fa-cube"></i>

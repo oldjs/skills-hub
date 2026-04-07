@@ -113,8 +113,8 @@
     var fileSize = document.getElementById('file-size');
     var removeFile = document.getElementById('remove-file');
     var submitBtn = document.getElementById('submit-btn');
-    var dropIcon = document.getElementById('drop-icon');
     var dropText = document.getElementById('drop-text');
+    var uploadForm = document.getElementById('upload-form');
 
     // 拖拽效果
     ['dragenter', 'dragover'].forEach(function(eventName) {
@@ -148,12 +148,27 @@
     removeFile.addEventListener('click', function() {
         fileInput.value = '';
         fileInfo.classList.add('hidden');
+        dropText.textContent = '点击选择或拖拽 ZIP 文件到这里';
         submitBtn.disabled = true;
     });
 
     function showFileInfo(file) {
+        if (!file.name.toLowerCase().endsWith('.zip')) {
+            fileInput.value = '';
+            submitBtn.disabled = true;
+            showToast('请选择 ZIP 文件');
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            fileInput.value = '';
+            submitBtn.disabled = true;
+            showToast('文件不能超过 10MB');
+            return;
+        }
+
         fileName.textContent = file.name;
         fileSize.textContent = formatBytes(file.size);
+        dropText.textContent = '文件已选择，可直接提交上传';
         fileInfo.classList.remove('hidden');
         submitBtn.disabled = false;
     }
@@ -164,6 +179,13 @@
         var sizes = ['B', 'KB', 'MB'];
         var i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function() {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
+        });
     }
 })();
 </script>

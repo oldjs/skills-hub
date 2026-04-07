@@ -126,7 +126,12 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	// 存数据库
 	skill, err := db.SaveUploadedSkill(sess.CurrentTenantID, slug, meta.Name, meta.Description, skillMD, meta.Version, categories, meta.Author)
 	if err != nil {
-		renderUploadError(w, r, err.Error())
+		log.Printf("save uploaded skill failed: %v", err)
+		if strings.Contains(err.Error(), "已存在") {
+			renderUploadError(w, r, err.Error())
+			return
+		}
+		renderUploadError(w, r, "保存 Skill 失败，请稍后重试")
 		return
 	}
 

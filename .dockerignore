@@ -1,0 +1,13 @@
+.git
+.github
+.idea
+.vscode
+skills-hub
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+data
+uploads
+tmp
+dist

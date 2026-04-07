@@ -2,6 +2,10 @@
 
 {{define "content"}}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    {{if .Error}}
+    <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{{.Error}}</div>
+    {{end}}
+
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div class="max-w-2xl">
@@ -19,9 +23,10 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-search text-slate-400 group-focus-within:text-orange-500 transition-colors"></i>
             </div>
-            <input type="text" name="q" value="{{.Query}}" placeholder="搜索技能名称或用途..."
+            <input type="text" name="q" id="search-input" value="{{.Query}}" placeholder="搜索技能名称或用途..."
                    class="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-all text-sm shadow-sm"
                    autocomplete="off">
+            <div id="search-suggestions" class="hidden absolute left-0 right-0 top-[calc(100%+10px)] z-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"></div>
         </form>
     </div>
 

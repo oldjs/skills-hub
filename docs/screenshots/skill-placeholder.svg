@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
+  <rect width="1280" height="720" fill="#F8FAFC"/>
+  <rect x="64" y="64" width="1152" height="592" rx="32" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="4"/>
+  <rect x="112" y="116" width="360" height="36" rx="18" fill="#FDBA74"/>
+  <rect x="112" y="184" width="700" height="160" rx="28" fill="#FFF7ED" stroke="#FDBA74" stroke-width="3"/>
+  <rect x="112" y="384" width="700" height="208" rx="28" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="3"/>
+  <rect x="844" y="184" width="260" height="180" rx="28" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="3"/>
+  <rect x="844" y="396" width="260" height="196" rx="28" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="3"/>
+  <text x="112" y="628" fill="#94A3B8" font-family="Arial, sans-serif" font-size="30">技能详情截图占位 / Skill Detail Placeholder</text>
+</svg>

@@ -23,6 +23,7 @@ func InitTemplates(templateDir string) {
 		"formatDate":  formatDate,
 		"maskEmail":   maskEmail,
 		"formatTime":  formatTime,
+		"firstChar":   firstChar,
 		"seq":         seq,
 		"parseInt":    parseIntFromStr,
 		"roundRating": roundRating,
@@ -216,4 +217,11 @@ func parseIntFromStr(s string) int {
 // 四舍五入评分，返回 int
 func roundRating(f float64) int {
 	return int(f + 0.5)
+}
+
+func firstChar(value string) string {
+	for _, r := range strings.TrimSpace(value) {
+		return string(r)
+	}
+	return "?"
 }

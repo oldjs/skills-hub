@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
+  <rect width="1280" height="720" fill="#F8FAFC"/>
+  <rect x="64" y="64" width="1152" height="592" rx="32" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="4"/>
+  <rect x="112" y="116" width="240" height="28" rx="14" fill="#FDBA74"/>
+  <rect x="112" y="180" width="420" height="380" rx="28" fill="#FFF7ED" stroke="#FDBA74" stroke-width="3"/>
+  <rect x="572" y="180" width="532" height="112" rx="24" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="3"/>
+  <rect x="572" y="320" width="532" height="112" rx="24" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="3"/>
+  <rect x="572" y="460" width="532" height="112" rx="24" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="3"/>
+  <text x="112" y="620" fill="#94A3B8" font-family="Arial, sans-serif" font-size="30">后台截图占位 / Admin Page Placeholder</text>
+</svg>

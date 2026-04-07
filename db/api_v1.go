@@ -187,7 +187,6 @@ func querySkillRowsForAPI(query string, tenantID *int64, slug string) ([]apiSkil
 		row.Version = security.DecodeStoredText(row.Version)
 		row.Author = security.DecodeStoredText(row.Author)
 		row.Source = security.DecodeStoredText(row.Source)
-		row.Content = row.Content
 		row.Categories = security.DecodeStoredText(row.Categories)
 		result = append(result, row)
 	}

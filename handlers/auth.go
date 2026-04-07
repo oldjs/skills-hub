@@ -6,11 +6,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -140,7 +141,8 @@ func clearSessionCookie(w http.ResponseWriter) {
 
 func getOrCreateCSRFToken(w http.ResponseWriter, r *http.Request) (string, error) {
 	if cookie, err := r.Cookie("csrf_token"); err == nil && cookie.Value != "" {
-		if _, err := rdb.Get(context.Background(), "csrf:"+cookie.Value).Result(); err == nil {
+		owner, err := rdb.Get(context.Background(), "csrf:"+cookie.Value).Result()
+		if err == nil && owner == csrfOwner(r) {
 			return cookie.Value, nil
 		}
 	}
@@ -149,7 +151,7 @@ func getOrCreateCSRFToken(w http.ResponseWriter, r *http.Request) (string, error
 	if err != nil {
 		return "", err
 	}
-	if err := rdb.Set(context.Background(), "csrf:"+token, "1", 24*time.Hour).Err(); err != nil {
+	if err := rdb.Set(context.Background(), "csrf:"+token, csrfOwner(r), 24*time.Hour).Err(); err != nil {
 		return "", err
 	}
 
@@ -166,11 +168,23 @@ func ValidateCSRFToken(r *http.Request) bool {
 		return false
 	}
 
-	_, err := rdb.Get(context.Background(), "csrf:"+token).Result()
+	cookie, err := r.Cookie("csrf_token")
+	if err != nil || cookie.Value == "" || cookie.Value != token {
+		return false
+	}
+
+	owner, err := rdb.Get(context.Background(), "csrf:"+token).Result()
 	if err != nil && err != redis.Nil {
 		log.Printf("校验 CSRF 失败: %v", err)
 	}
-	return err == nil
+	return err == nil && owner == csrfOwner(r)
+}
+
+func csrfOwner(r *http.Request) string {
+	if token := sessionTokenFromRequest(r); token != "" {
+		return "session:" + token
+	}
+	return "guest"
 }
 
 func IsLoggedIn(r *http.Request) bool {
@@ -187,12 +201,14 @@ func GetCurrentSession(r *http.Request) *sessionData {
 }
 
 func GetClientIP(r *http.Request) string {
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		parts := strings.Split(forwarded, ",")
-		return strings.TrimSpace(parts[0])
-	}
-	if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
-		return realIP
+	if os.Getenv("TRUST_PROXY_HEADERS") == "true" {
+		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+			parts := strings.Split(forwarded, ",")
+			return strings.TrimSpace(parts[0])
+		}
+		if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+			return realIP
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err == nil {
@@ -314,7 +330,13 @@ func loginPageData(title string) map[string]interface{} {
 }
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
-	if IsLoggedIn(r) {
+	sess, err := loadActiveSession(w, r)
+	if err != nil {
+		logSessionRefreshError(err)
+		http.Error(w, "系统繁忙，请稍后重试", http.StatusInternalServerError)
+		return
+	}
+	if sess != nil {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -399,7 +421,13 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserRegister(w http.ResponseWriter, r *http.Request) {
-	if IsLoggedIn(r) {
+	sess, err := loadActiveSession(w, r)
+	if err != nil {
+		logSessionRefreshError(err)
+		http.Error(w, "系统繁忙，请稍后重试", http.StatusInternalServerError)
+		return
+	}
+	if sess != nil {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -561,12 +589,18 @@ func SwitchTenant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, r.Referer(), http.StatusSeeOther)
+	http.Redirect(w, r, safeLocalRedirect(r.Referer(), r.Host), http.StatusSeeOther)
 }
 
 func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !IsLoggedIn(r) {
+		sess, err := loadActiveSession(w, r)
+		if err != nil {
+			logSessionRefreshError(err)
+			http.Error(w, "系统繁忙，请稍后重试", http.StatusInternalServerError)
+			return
+		}
+		if sess == nil {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
@@ -576,7 +610,12 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 
 func RequirePlatformAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sess := getSession(r)
+		sess, err := loadActiveSession(w, r)
+		if err != nil {
+			logSessionRefreshError(err)
+			http.Error(w, "系统繁忙，请稍后重试", http.StatusInternalServerError)
+			return
+		}
 		if sess == nil {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
@@ -590,7 +629,26 @@ func RequirePlatformAdmin(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func parseInt64(value string) (int64, error) {
-	var result int64
-	_, err := fmt.Sscan(strings.TrimSpace(value), &result)
-	return result, err
+	return strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+}
+
+func safeLocalRedirect(referrer, host string) string {
+	if strings.TrimSpace(referrer) == "" {
+		return "/"
+	}
+
+	parsed, err := url.Parse(referrer)
+	if err != nil {
+		return "/"
+	}
+	if parsed.Host != "" && !strings.EqualFold(parsed.Host, host) {
+		return "/"
+	}
+	if !strings.HasPrefix(parsed.Path, "/") {
+		return "/"
+	}
+	if parsed.RawQuery == "" {
+		return parsed.Path
+	}
+	return parsed.Path + "?" + parsed.RawQuery
 }

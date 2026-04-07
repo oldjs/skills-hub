@@ -49,9 +49,9 @@ type apiCategoryItem struct {
 }
 
 func APIV1SearchHandler(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := parseTenantIDQuery(r)
+	tenantID, err := resolveAPITenantScope(w, r)
 	if err != nil {
-		writeAPIError(w, http.StatusBadRequest, "tenant_id 参数不正确")
+		writeAPITenantScopeError(w, err)
 		return
 	}
 
@@ -86,9 +86,9 @@ func APIV1SkillDetailHandler(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusBadRequest, "skill slug 不正确")
 		return
 	}
-	tenantID, err := parseTenantIDQuery(r)
+	tenantID, err := resolveAPITenantScope(w, r)
 	if err != nil {
-		writeAPIError(w, http.StatusBadRequest, "tenant_id 参数不正确")
+		writeAPITenantScopeError(w, err)
 		return
 	}
 
@@ -131,9 +131,9 @@ func APIV1DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusBadRequest, "skill slug 不正确")
 		return
 	}
-	tenantID, err := parseTenantIDQuery(r)
+	tenantID, err := resolveAPITenantScope(w, r)
 	if err != nil {
-		writeAPIError(w, http.StatusBadRequest, "tenant_id 参数不正确")
+		writeAPITenantScopeError(w, err)
 		return
 	}
 
@@ -182,9 +182,9 @@ func APIV1DownloadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func APIV1CategoriesHandler(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := parseTenantIDQuery(r)
+	tenantID, err := resolveAPITenantScope(w, r)
 	if err != nil {
-		writeAPIError(w, http.StatusBadRequest, "tenant_id 参数不正确")
+		writeAPITenantScopeError(w, err)
 		return
 	}
 
@@ -231,6 +231,34 @@ func parseTenantIDQuery(r *http.Request) (*int64, error) {
 		return nil, err
 	}
 	return &parsed, nil
+}
+
+func resolveAPITenantScope(w http.ResponseWriter, r *http.Request) (*int64, error) {
+	tenantID, err := parseTenantIDQuery(r)
+	if err != nil {
+		return nil, fmt.Errorf("tenant_id 参数不正确")
+	}
+	if tenantID == nil || *tenantID == 0 {
+		return nil, nil
+	}
+
+	_, ok, err := requireTenantMembership(w, r, *tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("租户校验失败")
+	}
+	if !ok {
+		return nil, fmt.Errorf("无权访问该租户数据")
+	}
+
+	return tenantID, nil
+}
+
+func writeAPITenantScopeError(w http.ResponseWriter, err error) {
+	status := http.StatusForbidden
+	if err != nil && err.Error() == "tenant_id 参数不正确" {
+		status = http.StatusBadRequest
+	}
+	writeAPIError(w, status, err.Error())
 }
 
 func apiSlugFromPath(pathValue, prefix string) (string, error) {

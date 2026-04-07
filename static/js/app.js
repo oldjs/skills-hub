@@ -1,4 +1,5 @@
 let searchTimeout = null;
+let searchAbortController = null;
 const searchInput = document.getElementById('search-input');
 const suggestionsEl = document.getElementById('search-suggestions');
 
@@ -11,6 +12,9 @@ if (searchInput && suggestionsEl) {
         }
         
         if (query.length < 2) {
+            if (searchAbortController) {
+                searchAbortController.abort();
+            }
             suggestionsEl.classList.add('hidden');
             return;
         }
@@ -38,18 +42,30 @@ async function fetchSuggestions(query) {
         return;
     }
 
+    if (searchAbortController) {
+        searchAbortController.abort();
+    }
+    searchAbortController = new AbortController();
+
+    setSuggestionsMessage('搜索中...');
+
     try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&format=json`);
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&format=json`, {
+            signal: searchAbortController.signal,
+        });
         const data = await response.json();
         
         if (data.skills && data.skills.length > 0) {
             renderSuggestions(data.skills.slice(0, 8));
         } else {
-            suggestionsEl.innerHTML = '<div class="p-3 text-gray-500 text-sm">未找到匹配结果</div>';
-            suggestionsEl.classList.remove('hidden');
+            setSuggestionsMessage('未找到匹配结果');
         }
     } catch (err) {
+        if (err.name === 'AbortError') {
+            return;
+        }
         console.error('Search error:', err);
+        setSuggestionsMessage('搜索建议加载失败');
     }
 }
 
@@ -59,18 +75,48 @@ function renderSuggestions(skills) {
         return;
     }
     
-    suggestionsEl.innerHTML = skills.map(skill => `
-        <a href="/skill?slug=${skill.slug}" class="flex items-center p-3 hover:bg-gray-50 transition border-b border-gray-50 last:border-0">
-            <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-                <i class="fas fa-puzzle-piece text-indigo-500 text-xs"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900 truncate">${skill.displayName}</div>
-                <div class="text-xs text-gray-500 truncate">${skill.summary || ''}</div>
-            </div>
-        </a>
-    `).join('');
+    suggestionsEl.innerHTML = '';
+    skills.forEach(skill => {
+        const item = document.createElement('a');
+        item.href = `/skill?slug=${encodeURIComponent(skill.slug)}`;
+        item.className = 'flex items-center p-3 hover:bg-gray-50 transition border-b border-gray-50 last:border-0';
+
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0';
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-puzzle-piece text-indigo-500 text-xs';
+        iconWrap.appendChild(icon);
+
+        const content = document.createElement('div');
+        content.className = 'flex-1 min-w-0';
+
+        const title = document.createElement('div');
+        title.className = 'font-medium text-gray-900 truncate';
+        title.textContent = skill.displayName || skill.slug;
+
+        const summary = document.createElement('div');
+        summary.className = 'text-xs text-gray-500 truncate';
+        summary.textContent = skill.summary || '暂无描述';
+
+        content.appendChild(title);
+        content.appendChild(summary);
+        item.appendChild(iconWrap);
+        item.appendChild(content);
+        suggestionsEl.appendChild(item);
+    });
     
+    suggestionsEl.classList.remove('hidden');
+}
+
+function setSuggestionsMessage(message) {
+    if (!suggestionsEl) {
+        return;
+    }
+    suggestionsEl.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.className = 'p-3 text-sm text-gray-500';
+    empty.textContent = message;
+    suggestionsEl.appendChild(empty);
     suggestionsEl.classList.remove('hidden');
 }
 
@@ -99,7 +145,14 @@ function showToast(message) {
     
     const toast = document.createElement('div');
     toast.className = 'toast-notification fixed bottom-4 right-4 px-6 py-3 bg-gray-900 text-white rounded-lg shadow-lg z-50 fade-in';
-    toast.innerHTML = `<i class="fas fa-check-circle mr-2 text-green-400"></i>${message}`;
+
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-check-circle mr-2 text-green-400';
+    const text = document.createElement('span');
+    text.textContent = message;
+
+    toast.appendChild(icon);
+    toast.appendChild(text);
     document.body.appendChild(toast);
     
     setTimeout(() => {

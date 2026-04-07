@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -83,9 +84,15 @@ func AdminTenantCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if ownerEmail != "" {
 		user, err := db.GetUserByEmail(ownerEmail)
 		if err == nil && user != nil {
-			_, _ = db.AddTenantMember(tenant.ID, user.ID, "owner")
+			if _, err := db.AddTenantMember(tenant.ID, user.ID, "owner"); err != nil {
+				http.Redirect(w, r, "/admin?error=租户已创建，但负责人添加失败", http.StatusSeeOther)
+				return
+			}
 		} else {
-			_ = db.CreateTenantInvite(tenant.ID, ownerEmail, "owner", time.Now().Add(7*24*time.Hour))
+			if err := db.CreateTenantInvite(tenant.ID, ownerEmail, "owner", time.Now().Add(7*24*time.Hour)); err != nil {
+				http.Redirect(w, r, "/admin?error=租户已创建，但负责人邀请失败", http.StatusSeeOther)
+				return
+			}
 		}
 	}
 
@@ -202,19 +209,17 @@ func AdminTenantSyncHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin?error=参数错误", http.StatusSeeOther)
 		return
 	}
-	if db.IsSyncing(tenantID) {
+	if !db.StartTenantSync(tenantID) {
 		http.Redirect(w, r, "/admin/tenant?id="+r.FormValue("tenant_id")+"&error=同步已经在进行中", http.StatusSeeOther)
 		return
 	}
 	go func() {
-		db.SetSyncing(tenantID, true)
-		defer db.SetSyncing(tenantID, false)
+		defer db.FinishTenantSync(tenantID)
 		_ = db.SyncFromClawHub(tenantID)
 	}()
 	http.Redirect(w, r, "/admin/tenant?id="+r.FormValue("tenant_id")+"&info=已开始后台同步", http.StatusSeeOther)
 }
 
 func urlQueryEscape(value string) string {
-	replacer := strings.NewReplacer(" ", "+", "&", "%26", "?", "%3F")
-	return replacer.Replace(value)
+	return url.QueryEscape(value)
 }

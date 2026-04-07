@@ -3,6 +3,10 @@
 {{define "content"}}
 {{if .Skill}}
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+    {{if .Info}}
+    <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{{.Info}}</div>
+    {{end}}
+
     <nav class="mb-6">
         <ol class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <li><a href="/" class="hover:text-slate-700">首页</a></li>
@@ -50,8 +54,8 @@
                     <div class="rounded-2xl bg-white p-4">
                         <div class="text-slate-400 mb-1">用户评分</div>
                         <div class="flex items-center gap-2">
-                            <div class="text-2xl font-semibold text-slate-900">{{if gt .Skill.RatingCount 0}}{{printf "%.1f" .Skill.AvgRating}}{{else}}-{{end}}</div>
-                            <div class="text-xs text-slate-400">{{.Skill.RatingCount}} 人</div>
+                            <div class="text-2xl font-semibold text-slate-900" id="skill-rating-avg">{{if gt .Skill.RatingCount 0}}{{printf "%.1f" .Skill.AvgRating}}{{else}}-{{end}}</div>
+                            <div class="text-xs text-slate-400" id="skill-rating-count">{{.Skill.RatingCount}} 人</div>
                         </div>
                         <div class="mt-1 flex items-center gap-0.5">
                             {{$rounded := roundRating $.Skill.AvgRating}}
@@ -205,7 +209,7 @@
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center gap-2">
                                 <div class="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600 text-xs font-bold">
-                                    {{if .DisplayName}}{{slice .DisplayName 0 1}}{{else}}?{{end}}
+                                    {{if .DisplayName}}{{firstChar .DisplayName}}{{else}}?{{end}}
                                 </div>
                                     <div>
                                         <span class="text-sm font-medium text-slate-700">{{if .DisplayName}}{{.DisplayName}}{{else}}匿名用户{{end}}</span>
@@ -236,7 +240,7 @@
                             <i class="fas fa-copy text-sm"></i>
                         </button>
                         {{if .Skill.ClawHubURL}}
-                        <a href="{{.Skill.ClawHubURL}}" target="_blank" class="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-slate-700 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition">
+                        <a href="{{.Skill.ClawHubURL}}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-slate-700 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition">
                             <span>在 ClawHub 打开</span>
                             <i class="fas fa-arrow-up-right-from-square text-sm"></i>
                         </a>
@@ -389,16 +393,30 @@
 var csrfToken = '{{.CSRFToken}}';
 
 function submitRating(skillId, score) {
+    if (window.ratingSubmitting) {
+        return;
+    }
+
     var formData = new FormData();
     formData.append('skill_id', skillId);
     formData.append('score', score);
     formData.append('csrf_token', csrfToken);
+    window.ratingSubmitting = true;
+    document.querySelectorAll('.star-btn').forEach(function(btn) {
+        btn.disabled = true;
+        btn.classList.add('cursor-not-allowed', 'opacity-70');
+    });
 
     fetch('/api/rate', {
         method: 'POST',
         body: formData
     })
-    .then(function(resp) { return resp.json(); })
+    .then(function(resp) {
+        if (!resp.ok) {
+            throw new Error('rate failed');
+        }
+        return resp.json();
+    })
     .then(function(data) {
         if (data.success) {
             // 更新星星显示
@@ -423,11 +441,26 @@ function submitRating(skillId, score) {
             if (hint) {
                 hint.textContent = '你给了 ' + data.userScore + ' 星';
             }
+            var avg = document.getElementById('skill-rating-avg');
+            if (avg) {
+                avg.textContent = data.avgRating ? data.avgRating.toFixed(1) : '-';
+            }
+            var count = document.getElementById('skill-rating-count');
+            if (count) {
+                count.textContent = data.count + ' 人';
+            }
             showToast('评分成功');
         }
     })
     .catch(function() {
         showToast('评分失败，请重试');
+    })
+    .finally(function() {
+        window.ratingSubmitting = false;
+        document.querySelectorAll('.star-btn').forEach(function(btn) {
+            btn.disabled = false;
+            btn.classList.remove('cursor-not-allowed', 'opacity-70');
+        });
     });
 }
 </script>

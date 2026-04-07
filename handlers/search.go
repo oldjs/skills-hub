@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -34,9 +35,11 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category, sortBy)
 
 		if err != nil {
+			log.Printf("search json failed: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"skills": []models.Skill{},
-				"error":  err.Error(),
+				"error":  "搜索失败，请稍后重试",
 			})
 			return
 		}
@@ -49,13 +52,23 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pageError := ""
 	skills, err := db.GetFilteredSkills(sess.CurrentTenantID, query, category, sortBy)
 
 	if err != nil {
+		log.Printf("search page failed: %v", err)
 		skills = []models.Skill{}
+		pageError = "搜索服务暂时不可用，已为你展示空结果"
 	}
 
-	categories, _ := db.GetCategories(sess.CurrentTenantID)
+	categories, err := db.GetCategories(sess.CurrentTenantID)
+	if err != nil {
+		log.Printf("search categories failed: %v", err)
+		categories = []string{}
+		if pageError == "" {
+			pageError = "筛选分类加载失败，请稍后刷新重试"
+		}
+	}
 
 	data := PageData{
 		Title:         title,
@@ -67,6 +80,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		CurrentPage:   "search",
 		TotalSkills:   len(skills),
 		CategoryCount: len(categories),
+		Error:         pageError,
 	}
 
 	RenderTemplate(w, r, "search.html", data)

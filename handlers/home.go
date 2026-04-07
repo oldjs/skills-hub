@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"skills-hub/db"
@@ -19,9 +20,13 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pageError := ""
+
 	skills, err := db.GetAllSkills(sess.CurrentTenantID)
 	if err != nil {
+		log.Printf("home skills load failed: %v", err)
 		skills = []models.Skill{}
+		pageError = "技能数据加载失败，当前页面展示可能不完整"
 	}
 
 	featuredSkills := skills
@@ -31,7 +36,11 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	categories, err := db.GetCategories(sess.CurrentTenantID)
 	if err != nil {
+		log.Printf("home categories load failed: %v", err)
 		categories = []string{}
+		if pageError == "" {
+			pageError = "分类数据加载失败，当前页面展示可能不完整"
+		}
 	}
 
 	data := PageData{
@@ -41,6 +50,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		CurrentPage:   "home",
 		TotalSkills:   len(skills),
 		CategoryCount: len(categories),
+		Error:         pageError,
 	}
 
 	RenderTemplate(w, r, "index.html", data)

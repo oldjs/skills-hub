@@ -1,6 +1,9 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
+
 	"skills-hub/models"
 	"skills-hub/security"
 )
@@ -10,11 +13,24 @@ func AddComment(tenantID, skillID, userID int64, content string) error {
 	// 评论按 Markdown 源入库，但先把原始 HTML 转义掉。
 	content = security.EscapeMarkdownSource(content)
 
-	_, err := GetDB().Exec(`
+	result, err := GetDB().Exec(`
 		INSERT INTO skill_comments (tenant_id, skill_id, user_id, content)
-		VALUES (?, ?, ?, ?)
-	`, tenantID, skillID, userID, content)
-	return err
+		SELECT ?, s.id, ?, ?
+		FROM skills s
+		WHERE s.tenant_id = ? AND s.id = ?
+	`, tenantID, userID, content, tenantID, skillID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrSkillNotFound
+	}
+	return nil
 }
 
 // 拿某个 skill 的所有评论，按时间倒序，带用户信息
@@ -42,4 +58,8 @@ func GetSkillComments(tenantID, skillID int64) ([]models.SkillComment, error) {
 		comments = append(comments, c)
 	}
 	return comments, rows.Err()
+}
+
+func IsSkillNotFound(err error) bool {
+	return errors.Is(err, ErrSkillNotFound) || errors.Is(err, sql.ErrNoRows)
 }
