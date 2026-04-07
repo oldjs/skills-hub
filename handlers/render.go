@@ -222,12 +222,16 @@ type PaginationData struct {
 
 const (
 	defaultPerPage = 12
+	minPerPage     = 6
 	maxPerPage     = 48
 )
 
 func parsePaginationParams(r *http.Request) (int, int) {
 	page := parsePositiveInt(r.URL.Query().Get("page"), 1)
 	perPage := parsePositiveInt(r.URL.Query().Get("per_page"), defaultPerPage)
+	if perPage < minPerPage {
+		perPage = minPerPage
+	}
 	if perPage > maxPerPage {
 		perPage = maxPerPage
 	}

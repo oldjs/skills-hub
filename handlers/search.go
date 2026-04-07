@@ -43,6 +43,9 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"skills":   []models.Skill{},
+				"query":    query,
+				"category": category,
+				"sort":     sortBy,
 				"page":     1,
 				"per_page": perPage,
 				"total":    0,
