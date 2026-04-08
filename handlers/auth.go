@@ -668,6 +668,17 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// OptionalAuth 刷新已有 session 但不强制登录，让页面对未登录用户可见
+func OptionalAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 有 session 就刷新，没有也放行
+		if _, err := loadActiveSession(w, r); err != nil {
+			logSessionRefreshError(err)
+		}
+		next(w, r)
+	}
+}
+
 func RequirePlatformAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sess, err := loadActiveSession(w, r)

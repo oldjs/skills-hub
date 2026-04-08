@@ -11,8 +11,9 @@ import (
 
 func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	sess := GetCurrentSession(r)
-	if sess == nil || sess.CurrentTenantID == 0 {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	tenantID := resolveViewTenantID(sess)
+	if tenantID == 0 {
+		RenderServerError(w, r)
 		return
 	}
 
@@ -22,7 +23,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	skill, err := db.GetSkillBySlug(sess.CurrentTenantID, slug)
+	skill, err := db.GetSkillBySlug(tenantID, slug)
 	if err != nil || skill == nil {
 		RenderNotFound(w, r)
 		return
@@ -31,7 +32,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	pageInfo := ""
 
 	// 拉评分统计
-	avg, count, err := db.GetSkillRatingStats(sess.CurrentTenantID, skill.ID)
+	avg, count, err := db.GetSkillRatingStats(tenantID, skill.ID)
 	if err != nil {
 		log.Printf("skill rating stats failed: %v", err)
 		pageInfo = "部分互动数据加载失败，已展示基础信息"
@@ -39,15 +40,18 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	skill.AvgRating = avg
 	skill.RatingCount = count
 
-	// 当前用户的评分
-	userRating, err := db.GetUserRating(sess.CurrentTenantID, skill.ID, sess.UserID)
-	if err != nil {
-		log.Printf("user rating load failed: %v", err)
-		pageInfo = "部分互动数据加载失败，已展示基础信息"
+	// 当前用户的评分（未登录则为 0）
+	var userRating int
+	if sess != nil {
+		userRating, err = db.GetUserRating(tenantID, skill.ID, sess.UserID)
+		if err != nil {
+			log.Printf("user rating load failed: %v", err)
+			pageInfo = "部分互动数据加载失败，已展示基础信息"
+		}
 	}
 
 	// 拉评论列表
-	comments, err := db.GetSkillComments(sess.CurrentTenantID, skill.ID)
+	comments, err := db.GetSkillComments(tenantID, skill.ID)
 	if err != nil {
 		log.Printf("skill comments load failed: %v", err)
 		comments = []models.SkillComment{}
@@ -84,7 +88,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	categories, err := db.GetCategories(sess.CurrentTenantID)
+	categories, err := db.GetCategories(tenantID)
 	if err != nil {
 		log.Printf("skill categories load failed: %v", err)
 		categories = []string{}
@@ -93,11 +97,14 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 查收藏状态
-	isBookmarked := db.IsBookmarked(sess.UserID, skill.ID, sess.CurrentTenantID)
+	// 查收藏状态（未登录为 false）
+	var isBookmarked bool
+	if sess != nil {
+		isBookmarked = db.IsBookmarked(sess.UserID, skill.ID, tenantID)
+	}
 
 	// 拉相关技能推荐
-	relatedSkills, err := db.GetRelatedSkills(sess.CurrentTenantID, skill.ID, skill.Categories, 6)
+	relatedSkills, err := db.GetRelatedSkills(tenantID, skill.ID, skill.Categories, 6)
 	if err != nil {
 		log.Printf("related skills load failed: %v", err)
 		relatedSkills = []models.Skill{}

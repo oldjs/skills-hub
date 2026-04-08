@@ -12,12 +12,6 @@ import (
 
 // GET /user?id=123 公开 Profile 页
 func ProfileHandler(w http.ResponseWriter, r *http.Request) {
-	sess := GetCurrentSession(r)
-	if sess == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
 	userIDStr := r.URL.Query().Get("id")
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil || userID <= 0 {

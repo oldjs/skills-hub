@@ -13,11 +13,13 @@ import (
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	sess := GetCurrentSession(r)
-	if sess == nil || sess.CurrentTenantID == 0 {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	tenantID := resolveViewTenantID(sess)
+	if tenantID == 0 {
+		RenderServerError(w, r)
 		return
 	}
-	if !enforceRateLimit(w, "search-ip:"+GetClientIP(r), 30, sess.IsPlatformAdmin || sess.IsSubAdmin) {
+	isAdmin := sess != nil && (sess.IsPlatformAdmin || sess.IsSubAdmin)
+	if !enforceRateLimit(w, "search-ip:"+GetClientIP(r), 30, isAdmin) {
 		return
 	}
 
@@ -58,7 +60,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	if strings.Contains(r.Header.Get("Accept"), "application/json") || r.URL.Query().Get("format") == "json" {
 		w.Header().Set("Content-Type", "application/json")
-		skills, totalSkills, currentPage, err := db.GetFilteredSkillsPageAdvanced(sess.CurrentTenantID, searchParams, sortBy, page, perPage)
+		skills, totalSkills, currentPage, err := db.GetFilteredSkillsPageAdvanced(tenantID, searchParams, sortBy, page, perPage)
 		if err != nil {
 			log.Printf("search json failed: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -75,7 +77,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageError := ""
-	skills, totalSkills, currentPage, err := db.GetFilteredSkillsPageAdvanced(sess.CurrentTenantID, searchParams, sortBy, page, perPage)
+	skills, totalSkills, currentPage, err := db.GetFilteredSkillsPageAdvanced(tenantID, searchParams, sortBy, page, perPage)
 
 	if err != nil {
 		log.Printf("search page failed: %v", err)
@@ -85,7 +87,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		pageError = "搜索服务暂时不可用，已为你展示空结果"
 	}
 
-	categories, err := db.GetCategories(sess.CurrentTenantID)
+	categories, err := db.GetCategories(tenantID)
 	if err != nil {
 		log.Printf("search categories failed: %v", err)
 		categories = []string{}
