@@ -1,0 +1,39 @@
+{{define "title"}}{{.Title}}{{end}}
+{{define "jsonld"}}{{end}}
+
+{{define "content"}}{{template "admin_shell" .}}{{end}}
+
+{{define "admin_content"}}
+<section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+    <div>
+        <h2 class="text-3xl font-bold tracking-tight text-slate-900">邮件模板管理</h2>
+        <p class="mt-2 text-sm text-slate-500">编辑系统发出的邮件内容。模板中可用 {{"{{"}} .Code {{"}}"}} 作为验证码占位符。</p>
+    </div>
+
+    <div class="mt-6 space-y-6">
+        {{range .EmailTemplates}}
+        <form action="/admin/email-templates/update" method="POST" class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="template_id" value="{{.ID}}">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-slate-900">{{.ID}}</h3>
+                <span class="text-xs text-slate-400">更新于 {{formatTime .UpdatedAt}}</span>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-600">邮件主题</label>
+                    <input type="text" name="subject" value="{{.Subject}}" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100" required>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-600">HTML 正文</label>
+                    <textarea name="body_html" rows="8" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100" required>{{.BodyHTML}}</textarea>
+                </div>
+                <button type="submit" class="rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600">保存模板</button>
+            </div>
+        </form>
+        {{else}}
+        <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">暂无邮件模板</div>
+        {{end}}
+    </div>
+</section>
+{{end}}

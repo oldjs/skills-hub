@@ -148,11 +148,19 @@ func sendVerificationEmail(toEmail, code string) error {
 		mailFrom = "noreply@example.com"
 	}
 
+	// 优先从数据库读模板，读不到用默认值
+	subject := "Skills Hub 登录验证码"
+	htmlBody := fmt.Sprintf("<div style=\"font-family:sans-serif;max-width:420px;margin:0 auto;padding:24px\"><h2 style=\"color:#ea580c\">Skills Hub 验证码</h2><p>你的验证码是：</p><div style=\"font-size:32px;font-weight:700;letter-spacing:8px;color:#111827;padding:16px 0\">%s</div><p style=\"color:#64748b;font-size:14px\">验证码 5 分钟内有效，请勿泄露给他人。</p></div>", code)
+	if tpl, err := db.GetEmailTemplate("verification_code"); err == nil && tpl != nil {
+		subject = tpl.Subject
+		htmlBody = strings.ReplaceAll(tpl.BodyHTML, "{{.Code}}", code)
+	}
+
 	payload := map[string]interface{}{
 		"from":    mailFrom,
 		"to":      []string{toEmail},
-		"subject": "Skills Hub 登录验证码",
-		"html":    fmt.Sprintf("<div style=\"font-family:sans-serif;max-width:420px;margin:0 auto;padding:24px\"><h2 style=\"color:#ea580c\">Skills Hub 验证码</h2><p>你的验证码是：</p><div style=\"font-size:32px;font-weight:700;letter-spacing:8px;color:#111827;padding:16px 0\">%s</div><p style=\"color:#64748b;font-size:14px\">验证码 5 分钟内有效，请勿泄露给他人。</p></div>", code),
+		"subject": subject,
+		"html":    htmlBody,
 	}
 
 	body, err := json.Marshal(payload)

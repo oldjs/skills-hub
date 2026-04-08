@@ -71,6 +71,10 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateCreateEmailTemplatesTable(); err != nil {
+			return
+		}
+
 		if err = migrateCreateCollectionsTable(); err != nil {
 			return
 		}
@@ -568,6 +572,27 @@ func migrateCreateNotificationsTable() error {
 		)
 	`)
 	return err
+}
+
+// 邮件模板
+func migrateCreateEmailTemplatesTable() error {
+	_, err := database.Exec(`
+		CREATE TABLE IF NOT EXISTS email_templates (
+			id TEXT PRIMARY KEY,
+			subject TEXT NOT NULL,
+			body_html TEXT NOT NULL,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return err
+	}
+	// 插入默认模板（不覆盖已有）
+	_, _ = database.Exec(`
+		INSERT OR IGNORE INTO email_templates (id, subject, body_html) VALUES
+		('verification_code', 'Skills Hub 登录验证码', '<div style="font-family:sans-serif;max-width:420px;margin:0 auto;padding:24px"><h2 style="color:#ea580c">Skills Hub 验证码</h2><p>你的验证码是：</p><div style="font-size:32px;font-weight:700;letter-spacing:8px;color:#111827;padding:16px 0">{{.Code}}</div><p style="color:#64748b;font-size:14px">验证码 5 分钟内有效，请勿泄露给他人。</p></div>')
+	`)
+	return nil
 }
 
 // 技能合集

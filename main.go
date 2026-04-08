@@ -139,6 +139,8 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/tenant/invite/revoke", handlers.RequirePlatformAdmin(handlers.AdminTenantInviteRevokeHandler))
 	mux.HandleFunc("/admin/tenant/member/update", handlers.RequirePlatformAdmin(handlers.AdminTenantMemberUpdateHandler))
 	mux.HandleFunc("/admin/tenant/member/remove", handlers.RequirePlatformAdmin(handlers.AdminTenantMemberRemoveHandler))
+	mux.HandleFunc("/admin/email-templates", handlers.RequirePlatformAdmin(handlers.AdminEmailTemplatesHandler))
+	mux.HandleFunc("/admin/email-templates/update", handlers.RequirePlatformAdmin(handlers.AdminEmailTemplateUpdateHandler))
 	mux.HandleFunc("/admin/tenant/sync", handlers.RequirePlatformAdmin(handlers.AdminTenantSyncHandler))
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
