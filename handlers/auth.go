@@ -354,7 +354,12 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		RenderTemplate(w, r, "login.html", loginPageData("登录 - Skills Hub"))
+		data := loginPageData("登录 - Skills Hub")
+		// OAuth 回调可能带 error 参数
+		if errMsg := r.URL.Query().Get("error"); errMsg != "" {
+			data["Error"] = errMsg
+		}
+		RenderTemplate(w, r, "login.html", data)
 		return
 	}
 
