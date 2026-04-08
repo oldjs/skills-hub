@@ -90,6 +90,8 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/upload", handlers.APIV1UploadHandler)
 	mux.HandleFunc("/api/v1/categories", handlers.APIV1CategoriesHandler)
 	mux.HandleFunc("/api/v1/stats", handlers.APIV1StatsHandler)
+	mux.HandleFunc("/api/v1/openapi.json", handlers.OpenAPISpecHandler)
+	mux.HandleFunc("/api/v1/docs", handlers.OpenAPIDocsHandler)
 	mux.HandleFunc("/api/search", handlers.RequireAuth(handlers.SearchAPIHandler))
 	mux.HandleFunc("/api/sync/status", handlers.RequireAuth(handlers.SyncStatusHandler))
 	mux.HandleFunc("/", handlers.RequireAuth(handlers.HomeHandler))
