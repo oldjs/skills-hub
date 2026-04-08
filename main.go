@@ -47,7 +47,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:         ":" + port,
-		Handler:      handlers.SecurityHeaders(mux),
+		Handler:      handlers.RequestLogger(handlers.SecurityHeaders(mux)),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -97,6 +97,7 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/sync/status", handlers.RequireAuth(handlers.SyncStatusHandler))
 	mux.HandleFunc("/", handlers.RequireAuth(handlers.HomeHandler))
 	mux.HandleFunc("/search", handlers.OptionalAuth(handlers.SearchHandler))
+	mux.HandleFunc("/leaderboard", handlers.OptionalAuth(handlers.LeaderboardHandler))
 	mux.HandleFunc("/skill", handlers.OptionalAuth(handlers.SkillHandler))
 	mux.HandleFunc("/user", handlers.OptionalAuth(handlers.ProfileHandler))
 	mux.HandleFunc("/account/profile", handlers.RequireAuth(handlers.AccountProfileUpdateHandler))

@@ -30,10 +30,11 @@ func InitTemplates(templateDir string) {
 		"seq":           seq,
 		"parseInt":      parseIntFromStr,
 		"roundRating":   roundRating,
+		"add":           func(a, b int) int { return a + b },
 	}
 	basePath := filepath.Join(templateDir, "layout.html")
 	adminShellPath := filepath.Join(templateDir, "admin_shell.html")
-	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "account.html", "profile.html", "bookmarks.html", "error.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
+	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "account.html", "profile.html", "bookmarks.html", "leaderboard.html", "error.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
 
 	for _, page := range pages {
 		files := []string{basePath, filepath.Join(templateDir, page)}
