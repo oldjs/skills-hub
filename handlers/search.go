@@ -96,6 +96,11 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 未登录用户的搜索结果允许短缓存
+	if sess == nil {
+		setSearchCacheHeaders(w)
+	}
+
 	metaDesc := "在 Skills Hub 中搜索 OpenClaw 技能"
 	if query != "" {
 		metaDesc = "搜索结果: " + query + " - Skills Hub"

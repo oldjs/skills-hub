@@ -124,6 +124,14 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	metaKw := skill.DisplayName + "," + skill.Categories + ",OpenClaw,Skills"
 
+	// 技能详情页缓存（未登录用户可用 CDN 缓存）
+	if sess == nil {
+		cacheContent := skill.Slug + skill.Version + skill.Summary
+		if setCacheHeaders(w, r, cacheContent, skill.UpdatedAt) {
+			return
+		}
+	}
+
 	data := PageData{
 		Title:           skill.DisplayName + " - Skills Hub",
 		MetaDescription: metaDesc,
