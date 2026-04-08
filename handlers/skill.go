@@ -13,7 +13,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	sess := GetCurrentSession(r)
 	tenantID := resolveViewTenantID(sess)
 	if tenantID == 0 {
-		RenderServerError(w, r)
+		RenderNotFound(w, r)
 		return
 	}
 

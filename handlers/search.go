@@ -14,8 +14,16 @@ import (
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	sess := GetCurrentSession(r)
 	tenantID := resolveViewTenantID(sess)
+
+	// 没有可用租户时展示空搜索页，不报 500
 	if tenantID == 0 {
-		RenderServerError(w, r)
+		RenderTemplate(w, r, "search.html", PageData{
+			Title:       "搜索 Skills - Skills Hub",
+			CurrentPage: "search",
+			Skills:      []models.Skill{},
+			Pagination:  NewPaginationData(1, defaultPerPage, 0),
+			Info:        "暂无数据，请先创建租户或同步技能。",
+		})
 		return
 	}
 	isAdmin := sess != nil && (sess.IsPlatformAdmin || sess.IsSubAdmin)

@@ -16,21 +16,38 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sess := GetCurrentSession(r)
-	if sess == nil || sess.CurrentTenantID == 0 {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	tenantID := resolveViewTenantID(sess)
+
+	// 没有可用租户时展示空首页，不报 500
+	if tenantID == 0 {
+		RenderTemplate(w, r, "index.html", PageData{
+			Title:           "Skills Hub - OpenClaw 技能中心",
+			MetaDescription: "Skills Hub 是 OpenClaw 智能体技能市场，探索、发现并安装全球开发者构建的优质 AI Skills。",
+			MetaKeywords:    "OpenClaw,Skills,AI,智能体,技能市场,插件,自动化",
+			CanonicalURL:    canonicalURL("/"),
+			Skills:          []models.Skill{},
+			CurrentPage:     "home",
+			Pagination:      NewPaginationData(1, defaultPerPage, 0),
+			Info:            "暂无数据，请先创建租户或同步技能。",
+		})
 		return
+	}
+
+	// 未登录访客给一层短缓存，利于 SEO 爬虫
+	if sess == nil {
+		setSearchCacheHeaders(w)
 	}
 
 	pageError := ""
 	page, perPage := parsePaginationParams(r)
 
 	// 首页热门查询走 Redis 缓存
-	cacheTag := fmt.Sprintf("home:%d:p%d", sess.CurrentTenantID, page)
-	skills, totalSkills, hit := db.GetCachedSkills(sess.CurrentTenantID, cacheTag)
+	cacheTag := fmt.Sprintf("home:%d:p%d", tenantID, page)
+	skills, totalSkills, hit := db.GetCachedSkills(tenantID, cacheTag)
 	currentPage := page
 	if !hit {
 		var err error
-		skills, totalSkills, currentPage, err = db.GetFilteredSkillsPage(sess.CurrentTenantID, "", "", "", page, perPage)
+		skills, totalSkills, currentPage, err = db.GetFilteredSkillsPage(tenantID, "", "", "", page, perPage)
 		if err != nil {
 			slog.Error("home skills load failed", "error", err)
 			skills = []models.Skill{}
@@ -42,7 +59,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	categories, err := db.GetCategories(sess.CurrentTenantID)
+	categories, err := db.GetCategories(tenantID)
 	if err != nil {
 		slog.Error("home categories load failed", "error", err)
 		categories = []string{}

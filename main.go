@@ -35,6 +35,13 @@ func main() {
 	// 搜索结果缓存共用 auth 的 Redis 客户端
 	db.SetCacheClient(handlers.GetRedisClient())
 
+	// DEV_MODE: 自动建开发用户和租户，方便本地不登录就能浏览
+	if handlers.IsDevMode() {
+		if err := db.EnsureDevSeed(); err != nil {
+			log.Printf("[DEV_MODE] seed failed (non-fatal): %v", err)
+		}
+	}
+
 	handlers.InitTemplates("./templates")
 
 	go startAutoSync(6 * time.Hour)
@@ -47,9 +54,15 @@ func main() {
 	mux := http.NewServeMux()
 	setupRoutes(mux)
 
+	// DEV_MODE 时在最外层包一个自动登录中间件
+	var rootHandler http.Handler = handlers.RequestLogger(handlers.SecurityHeaders(mux))
+	if handlers.IsDevMode() {
+		rootHandler = handlers.DevAutoLogin(rootHandler)
+	}
+
 	server := &http.Server{
 		Addr:         ":" + port,
-		Handler:      handlers.RequestLogger(handlers.SecurityHeaders(mux)),
+		Handler:      rootHandler,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -97,7 +110,7 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/docs", handlers.OpenAPIDocsHandler)
 	mux.HandleFunc("/api/search", handlers.RequireAuth(handlers.SearchAPIHandler))
 	mux.HandleFunc("/api/sync/status", handlers.RequireAuth(handlers.SyncStatusHandler))
-	mux.HandleFunc("/", handlers.RequireAuth(handlers.HomeHandler))
+	mux.HandleFunc("/", handlers.OptionalAuth(handlers.HomeHandler))
 	mux.HandleFunc("/search", handlers.OptionalAuth(handlers.SearchHandler))
 	mux.HandleFunc("/leaderboard", handlers.OptionalAuth(handlers.LeaderboardHandler))
 	mux.HandleFunc("/skill", handlers.OptionalAuth(handlers.SkillHandler))

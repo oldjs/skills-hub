@@ -12,8 +12,16 @@ import (
 func LeaderboardHandler(w http.ResponseWriter, r *http.Request) {
 	sess := GetCurrentSession(r)
 	tenantID := resolveViewTenantID(sess)
+
+	// 没有可用租户时展示空排行榜
 	if tenantID == 0 {
-		RenderServerError(w, r)
+		RenderTemplate(w, r, "leaderboard.html", map[string]interface{}{
+			"Title":        "技能排行榜 - Skills Hub",
+			"CurrentPage":  "leaderboard",
+			"TopSkills":    []models.Skill{},
+			"ActiveSkills": []models.Skill{},
+			"Info":         "暂无数据，请先创建租户或同步技能。",
+		})
 		return
 	}
 

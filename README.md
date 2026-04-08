@@ -115,6 +115,7 @@ See [`.env.example`](.env.example) for all options.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `DEV_MODE` | `false` | Set `true` for local dev (auto-creates user + tenant, auto-login) |
 | `PORT` | `8080` | HTTP listen port |
 | `DB_PATH` | `./skills.db` | SQLite database file path |
 | `REDIS_URL` | `127.0.0.1:6379` | Redis address |
@@ -210,6 +211,18 @@ gofmt -w .
 # Lint (requires golangci-lint)
 golangci-lint run
 ```
+
+## On AI-Assisted Programming
+
+Let's be honest: I'm mass-producing code with AI, and it's a weird position to be in.
+
+On one hand, I genuinely worry that AI will make human programmers obsolete — including me. Every time I watch Cursor or Claude spit out a working feature in seconds that would have taken me an hour, a small part of my professional identity dies a little. That's a real anxiety I carry. I've spent years learning to code, and now a machine does it faster (and sometimes better, which hurts even more).
+
+On the other hand, I absolutely love coding with AI. It's like having a tireless pair-programming partner who never judges your dumb questions and never needs a coffee break. I get more done in a weekend than I used to in a month. The dopamine hit of shipping features at this speed is genuinely addictive. I've become the person I used to mock — the one who says "it's not about writing code, it's about knowing what to build."
+
+So yeah, the irony isn't lost on me: I'm using the very thing I fear to build the things I love. If AI does replace us all someday, at least I'll have had fun on the way out. And if it doesn't, well, I'll have shipped a lot of code.
+
+This entire project was built with heavy AI assistance (Claude, mostly). The architecture decisions, the code, even parts of this README — AI had its fingerprints on all of it. I'm not ashamed of that. I'm a little scared of it. But mostly, I'm just grateful the tools exist.
 
 ## License
 
