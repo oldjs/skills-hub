@@ -26,10 +26,14 @@ func AccountHandler(w http.ResponseWriter, r *http.Request) {
 		apiKeys = []models.APIKey{}
 	}
 
+	// 拉通知列表
+	notifications, _ := db.GetUserNotifications(sess.UserID, 30)
+
 	RenderTemplate(w, r, "account.html", PageData{
 		Title:       "个人中心 - Skills Hub",
 		CurrentPage: "account",
 		APIKeys:     apiKeys,
+		Notifications: notifications,
 		Info:        r.URL.Query().Get("info"),
 		Error:       r.URL.Query().Get("error"),
 	})

@@ -21,13 +21,13 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("id")
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil || userID <= 0 {
-		http.NotFound(w, r)
+		RenderNotFound(w, r)
 		return
 	}
 
 	profile, err := db.GetUserPublicProfile(userID)
 	if err != nil || profile == nil {
-		http.NotFound(w, r)
+		RenderNotFound(w, r)
 		return
 	}
 

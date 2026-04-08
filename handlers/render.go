@@ -32,7 +32,7 @@ func InitTemplates(templateDir string) {
 	}
 	basePath := filepath.Join(templateDir, "layout.html")
 	adminShellPath := filepath.Join(templateDir, "admin_shell.html")
-	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "account.html", "profile.html", "bookmarks.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
+	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "account.html", "profile.html", "bookmarks.html", "error.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
 
 	for _, page := range pages {
 		files := []string{basePath, filepath.Join(templateDir, page)}
@@ -187,6 +187,9 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	if data.SkillVersions != nil {
 		target["SkillVersions"] = data.SkillVersions
 	}
+	if data.Notifications != nil {
+		target["Notifications"] = data.Notifications
+	}
 	if data.GeneratedAPIKey != "" {
 		target["GeneratedAPIKey"] = data.GeneratedAPIKey
 	}
@@ -239,6 +242,7 @@ type PageData struct {
 	SkillVersions   []db.SkillVersion
 	APIKeys         []models.APIKey
 	GeneratedAPIKey string
+	Notifications   []db.Notification
 	// SEO
 	MetaDescription string
 	MetaKeywords    string

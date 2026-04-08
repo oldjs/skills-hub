@@ -24,7 +24,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 
 	skill, err := db.GetSkillBySlug(sess.CurrentTenantID, slug)
 	if err != nil || skill == nil {
-		http.NotFound(w, r)
+		RenderNotFound(w, r)
 		return
 	}
 

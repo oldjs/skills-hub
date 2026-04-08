@@ -10,7 +10,7 @@ import (
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" && r.URL.Path != "/index.html" {
-		http.NotFound(w, r)
+		RenderNotFound(w, r)
 		return
 	}
 

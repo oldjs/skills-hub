@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -24,6 +25,12 @@ import (
 var rdb *redis.Client
 
 const sessionTTL = 24 * time.Hour
+
+// 登录/注册防暴力破解：5 次失败锁定 15 分钟
+const (
+	maxLoginFailures = 5
+	loginLockTTL     = 15 * time.Minute
+)
 
 type sessionData struct {
 	UserID          int64  `json:"user_id"`
@@ -375,8 +382,24 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 防暴力破解：IP + 邮箱维度限流
+	ip := GetClientIP(r)
+	loginIPKey := rateLimitKey("ratelimit:login-ip:", ip)
+	loginEmailKey := rateLimitKey("ratelimit:login-email:", normalizeEmail(email))
+	if locked, remaining, _ := failureLockState(loginIPKey, maxLoginFailures); locked {
+		data["Error"] = fmt.Sprintf("登录尝试次数过多，请 %d 秒后重试", secondsRemaining(remaining))
+		RenderTemplate(w, r, "login.html", data)
+		return
+	}
+	if locked, remaining, _ := failureLockState(loginEmailKey, maxLoginFailures); locked {
+		data["Error"] = fmt.Sprintf("该邮箱登录尝试次数过多，请 %d 秒后重试", secondsRemaining(remaining))
+		RenderTemplate(w, r, "login.html", data)
+		return
+	}
+
 	// 校验图形验证码
 	if !validateCaptcha(r, captchaInput) {
+		_ = recordFailure(loginIPKey, loginLockTTL)
 		data["Error"] = "图形验证码错误，请重新输入"
 		RenderTemplate(w, r, "login.html", data)
 		return
@@ -389,6 +412,8 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if user == nil {
+		_ = recordFailure(loginIPKey, loginLockTTL)
+		_ = recordFailure(loginEmailKey, loginLockTTL)
 		data["Error"] = "该邮箱未注册，请先创建账号"
 		RenderTemplate(w, r, "login.html", data)
 		return
@@ -407,10 +432,15 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if ok, msg := verifyCode(r, user.Email, code, "login"); !ok {
+		_ = recordFailure(loginIPKey, loginLockTTL)
+		_ = recordFailure(loginEmailKey, loginLockTTL)
 		data["Error"] = msg
 		RenderTemplate(w, r, "login.html", data)
 		return
 	}
+	// 登录成功，清除失败计数
+	_ = clearFailures(loginIPKey)
+	_ = clearFailures(loginEmailKey)
 
 	tenant, err := ensureUserTenant(user)
 	if err != nil {
@@ -473,8 +503,17 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 防暴力破解：IP 维度限流
+	regIPKey := rateLimitKey("ratelimit:register-ip:", GetClientIP(r))
+	if locked, remaining, _ := failureLockState(regIPKey, maxLoginFailures); locked {
+		data["Error"] = fmt.Sprintf("注册尝试次数过多，请 %d 秒后重试", secondsRemaining(remaining))
+		RenderTemplate(w, r, "register.html", data)
+		return
+	}
+
 	// 校验图形验证码
 	if !validateCaptcha(r, captchaInput) {
+		_ = recordFailure(regIPKey, loginLockTTL)
 		data["Error"] = "图形验证码错误，请重新输入"
 		RenderTemplate(w, r, "register.html", data)
 		return
@@ -510,10 +549,12 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if ok, msg := verifyCode(r, email, code, "register"); !ok {
+		_ = recordFailure(regIPKey, loginLockTTL)
 		data["Error"] = msg
 		RenderTemplate(w, r, "register.html", data)
 		return
 	}
+	_ = clearFailures(regIPKey)
 
 	user, err := db.CreateUser(email, displayName, shouldBePlatformAdmin(email))
 	if err != nil {

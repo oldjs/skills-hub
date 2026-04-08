@@ -21,6 +21,49 @@
         </div>
         {{end}}
 
+        <!-- 通知 -->
+        <div class="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-6" id="notifications">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-lg font-semibold text-slate-900">通知</h2>
+                <form action="/api/notifications/read-all" method="POST" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    <button type="submit" class="text-xs text-orange-500 hover:text-orange-600 font-medium">全部已读</button>
+                </form>
+            </div>
+            {{if .Notifications}}
+            <div class="space-y-3">
+                {{range .Notifications}}
+                <div class="rounded-2xl border {{if .IsRead}}border-slate-200 bg-white{{else}}border-orange-200 bg-orange-50/50{{end}} p-4 flex items-start gap-3">
+                    <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full {{if .IsRead}}bg-slate-100 text-slate-400{{else}}bg-orange-100 text-orange-500{{end}}">
+                        {{if eq .Type "review_approved"}}<i class="fas fa-check text-xs"></i>
+                        {{else if eq .Type "review_rejected"}}<i class="fas fa-times text-xs"></i>
+                        {{else if eq .Type "comment_reply"}}<i class="fas fa-reply text-xs"></i>
+                        {{else}}<i class="fas fa-bell text-xs"></i>
+                        {{end}}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm text-slate-800">{{.Title}}</div>
+                        {{if .Content}}<div class="text-xs text-slate-500 mt-1">{{.Content}}</div>{{end}}
+                        <div class="flex items-center gap-3 mt-2">
+                            <span class="text-xs text-slate-400">{{formatTime .CreatedAt}}</span>
+                            {{if .Link}}<a href="{{.Link}}" class="text-xs text-orange-500 hover:text-orange-600">查看详情</a>{{end}}
+                            {{if not .IsRead}}
+                            <form action="/api/notifications/read" method="POST" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                <input type="hidden" name="id" value="{{.ID}}">
+                                <button type="submit" class="text-xs text-slate-400 hover:text-slate-600">标记已读</button>
+                            </form>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            {{else}}
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">暂无通知</div>
+            {{end}}
+        </div>
+
         <!-- 个人资料编辑 -->
         <div class="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-6">
             <div class="flex items-center justify-between mb-5">

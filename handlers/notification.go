@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"skills-hub/db"
 )
@@ -47,8 +48,13 @@ func NotificationReadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "无效的 ID", http.StatusBadRequest)
 		return
 	}
-
 	_ = db.MarkNotificationRead(nID, sess.UserID)
+
+	// 表单提交跳回 account 页，AJAX 返回 JSON
+	if !wantsJSON(r) {
+		http.Redirect(w, r, "/account#notifications", http.StatusSeeOther)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
@@ -68,8 +74,18 @@ func NotificationReadAllHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "无效的请求", http.StatusForbidden)
 		return
 	}
-
 	_ = db.MarkAllNotificationsRead(sess.UserID)
+
+	if !wantsJSON(r) {
+		http.Redirect(w, r, "/account#notifications", http.StatusSeeOther)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+// 判断请求方是想要 JSON 还是 HTML
+func wantsJSON(r *http.Request) bool {
+	accept := r.Header.Get("Accept")
+	return strings.Contains(accept, "application/json")
 }
