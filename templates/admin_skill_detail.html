@@ -98,6 +98,30 @@
                 </div>
             </dl>
         </section>
+
+        <!-- 版本历史 -->
+        {{if .SkillVersions}}
+        <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-slate-900 mb-4">版本历史</h3>
+            <div class="space-y-3">
+                {{range .SkillVersions}}
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-4">
+                    <div>
+                        <div class="text-sm font-medium text-slate-900">{{if .Version}}v{{.Version}}{{else}}未标注版本{{end}}</div>
+                        <div class="text-xs text-slate-400 mt-1">{{formatTime .CreatedAt}}</div>
+                        {{if .Summary}}<div class="text-xs text-slate-500 mt-1 truncate max-w-xs">{{.Summary}}</div>{{end}}
+                    </div>
+                    <form action="/admin/skill/rollback" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                        <input type="hidden" name="skill_id" value="{{.SkillID}}">
+                        <input type="hidden" name="version_id" value="{{.ID}}">
+                        <button type="submit" class="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-medium text-orange-600 hover:bg-orange-100 transition">回滚</button>
+                    </form>
+                </div>
+                {{end}}
+            </div>
+        </section>
+        {{end}}
     </div>
 </div>
 {{end}}

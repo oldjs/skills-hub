@@ -46,12 +46,16 @@ func AdminSkillDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 拉版本历史
+	versions, _ := db.GetSkillVersions(skillID)
+
 	renderAdminPage(w, r, "admin_skill_detail.html", PageData{
-		Title:        skill.DisplayName + " - Skill 审核",
-		AdminSection: "skills",
-		AdminSkill:   skill,
-		Info:         r.URL.Query().Get("info"),
-		Error:        r.URL.Query().Get("error"),
+		Title:         skill.DisplayName + " - Skill 审核",
+		AdminSection:  "skills",
+		AdminSkill:    skill,
+		SkillVersions: versions,
+		Info:          r.URL.Query().Get("info"),
+		Error:         r.URL.Query().Get("error"),
 	})
 }
 
@@ -70,6 +74,11 @@ func AdminSkillUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(r.FormValue("display_name")) == "" {
 		http.Redirect(w, r, "/admin/skill?id="+r.FormValue("skill_id")+"&error=显示名称不能为空", http.StatusSeeOther)
 		return
+	}
+
+	// 更新前保存当前版本快照
+	if oldSkill, _ := db.GetAdminSkillByID(skillID); oldSkill != nil {
+		db.SaveSkillVersion(skillID, oldSkill.TenantID)
 	}
 
 	err = db.UpdateAdminSkill(
@@ -124,4 +133,31 @@ func AdminSkillReviewHandler(w http.ResponseWriter, r *http.Request) {
 	// 通知上传者审核结果
 	notifySkillReviewResult(skillID, status, strings.TrimSpace(r.FormValue("review_note")))
 	http.Redirect(w, r, "/admin/skill?id="+r.FormValue("skill_id")+"&info="+urlQueryEscape(message), http.StatusSeeOther)
+}
+
+// POST /admin/skill/rollback — 回滚到历史版本
+func AdminSkillRollbackHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost || !ValidateCSRFToken(r) {
+		http.Error(w, "无效的请求", http.StatusForbidden)
+		return
+	}
+
+	skillID, err := parseInt64(r.FormValue("skill_id"))
+	if err != nil {
+		http.Redirect(w, r, "/admin/skills?error=参数错误", http.StatusSeeOther)
+		return
+	}
+	versionID, err := parseInt64(r.FormValue("version_id"))
+	if err != nil {
+		http.Redirect(w, r, "/admin/skill?id="+r.FormValue("skill_id")+"&error=版本 ID 不正确", http.StatusSeeOther)
+		return
+	}
+
+	if err := db.RollbackSkillToVersion(skillID, versionID); err != nil {
+		http.Redirect(w, r, "/admin/skill?id="+r.FormValue("skill_id")+"&error=回滚失败", http.StatusSeeOther)
+		return
+	}
+
+	recordAdminAction(r, "skill.rollback", "skill", skillID, "回滚到版本 #"+r.FormValue("version_id"))
+	http.Redirect(w, r, "/admin/skill?id="+r.FormValue("skill_id")+"&info=已回滚到历史版本", http.StatusSeeOther)
 }

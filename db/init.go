@@ -63,6 +63,10 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateCreateSkillVersionsTable(); err != nil {
+			return
+		}
+
 		if err = migrateCreateNotificationsTable(); err != nil {
 			return
 		}
@@ -268,6 +272,7 @@ func createIndexes() error {
 		`CREATE INDEX IF NOT EXISTS idx_skill_comments_parent ON skill_comments(parent_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_skill_bookmarks_user ON skill_bookmarks(user_id, tenant_id, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_skill_versions_skill ON skill_versions(skill_id, created_at DESC)`,
 	}
 
 	for _, statement := range statements {
@@ -519,6 +524,24 @@ func migrateAddSubAdminColumn() error {
 		log.Printf("添加 is_sub_admin 列失败（可能已存在）: %v", err)
 	}
 	return nil
+}
+
+// 技能版本历史表
+func migrateCreateSkillVersionsTable() error {
+	_, err := database.Exec(`
+		CREATE TABLE IF NOT EXISTS skill_versions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			skill_id INTEGER NOT NULL,
+			tenant_id INTEGER NOT NULL,
+			version TEXT NOT NULL,
+			summary TEXT NOT NULL DEFAULT '',
+			content TEXT NOT NULL DEFAULT '',
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,
+			FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+		)
+	`)
+	return err
 }
 
 // 通知表

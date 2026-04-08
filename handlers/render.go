@@ -184,6 +184,9 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	if data.APIKeys != nil {
 		target["APIKeys"] = data.APIKeys
 	}
+	if data.SkillVersions != nil {
+		target["SkillVersions"] = data.SkillVersions
+	}
 	if data.GeneratedAPIKey != "" {
 		target["GeneratedAPIKey"] = data.GeneratedAPIKey
 	}
@@ -233,6 +236,7 @@ type PageData struct {
 	AdminComments   []models.AdminComment
 	AdminLogs       []models.AdminActionLog
 	AdminSkill      *models.AdminSkill
+	SkillVersions   []db.SkillVersion
 	APIKeys         []models.APIKey
 	GeneratedAPIKey string
 	// SEO
