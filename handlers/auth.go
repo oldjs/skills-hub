@@ -2,12 +2,9 @@ package handlers
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -18,13 +15,7 @@ import (
 
 	"skills-hub/db"
 	"skills-hub/models"
-
-	"github.com/redis/go-redis/v9"
 )
-
-var rdb *redis.Client
-
-const sessionTTL = 24 * time.Hour
 
 // 登录/注册防暴力破解：5 次失败锁定 15 分钟
 const (
@@ -32,191 +23,7 @@ const (
 	loginLockTTL     = 15 * time.Minute
 )
 
-type sessionData struct {
-	UserID          int64  `json:"user_id"`
-	Email           string `json:"email"`
-	DisplayName     string `json:"display_name"`
-	IsPlatformAdmin bool   `json:"is_platform_admin"`
-	IsSubAdmin      bool   `json:"is_sub_admin"`
-	CurrentTenantID int64  `json:"current_tenant_id"`
-	TenantName      string `json:"tenant_name"`
-	TenantSlug      string `json:"tenant_slug"`
-	TenantRole      string `json:"tenant_role"`
-}
-
-func InitAuth() error {
-	addr := os.Getenv("REDIS_URL")
-	if addr == "" {
-		addr = "127.0.0.1:6379"
-	}
-
-	rdb = redis.NewClient(&redis.Options{
-		Addr:     addr,
-		PoolSize: 20,
-	})
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	return rdb.Ping(ctx).Err()
-}
-
-func CloseAuth() {
-	if rdb != nil {
-		_ = rdb.Close()
-	}
-}
-
-func generateToken() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
-
-func sessionKey(token string) string {
-	return "session:" + token
-}
-
-func setSession(token string, sess sessionData) error {
-	data, err := json.Marshal(sess)
-	if err != nil {
-		return err
-	}
-	return rdb.Set(context.Background(), sessionKey(token), data, sessionTTL).Err()
-}
-
-func getSession(r *http.Request) *sessionData {
-	cookie, err := r.Cookie("session")
-	if err != nil || cookie.Value == "" {
-		return nil
-	}
-
-	data, err := rdb.Get(context.Background(), sessionKey(cookie.Value)).Bytes()
-	if err != nil {
-		if err != redis.Nil {
-			slog.Error("读取会话失败", "error", err)
-		}
-		return nil
-	}
-
-	var sess sessionData
-	if err := json.Unmarshal(data, &sess); err != nil {
-		slog.Error("解析会话失败", "error", err)
-		return nil
-	}
-
-	return &sess
-}
-
-func deleteSession(token string) {
-	if err := rdb.Del(context.Background(), sessionKey(token)).Err(); err != nil && err != redis.Nil {
-		slog.Error("删除会话失败", "error", err)
-	}
-}
-
-func isCookieSecure() bool {
-	return os.Getenv("COOKIE_SECURE") == "true"
-}
-
-func setSecureCookie(w http.ResponseWriter, name, value string, maxAge int) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     name,
-		Value:    value,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   isCookieSecure(),
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   maxAge,
-	})
-}
-
-func setSessionCookie(w http.ResponseWriter, token string) {
-	setSecureCookie(w, "session", token, int(sessionTTL.Seconds()))
-}
-
-func clearSessionCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   isCookieSecure(),
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   -1,
-	})
-}
-
-func getOrCreateCSRFToken(w http.ResponseWriter, r *http.Request) (string, error) {
-	if cookie, err := r.Cookie("csrf_token"); err == nil && cookie.Value != "" {
-		owner, err := rdb.Get(context.Background(), "csrf:"+cookie.Value).Result()
-		if err == nil && owner == csrfOwner(r) {
-			return cookie.Value, nil
-		}
-	}
-
-	token, err := generateToken()
-	if err != nil {
-		return "", err
-	}
-	if err := rdb.Set(context.Background(), "csrf:"+token, csrfOwner(r), 24*time.Hour).Err(); err != nil {
-		return "", err
-	}
-
-	setSecureCookie(w, "csrf_token", token, 86400)
-	return token, nil
-}
-
-func ValidateCSRFToken(r *http.Request) bool {
-	token := r.FormValue("csrf_token")
-	if token == "" {
-		token = r.Header.Get("X-CSRF-Token")
-	}
-	if token == "" {
-		return false
-	}
-
-	cookie, err := r.Cookie("csrf_token")
-	if err != nil || cookie.Value == "" || cookie.Value != token {
-		return false
-	}
-
-	owner, err := rdb.Get(context.Background(), "csrf:"+token).Result()
-	if err != nil && err != redis.Nil {
-		slog.Error("校验 CSRF 失败", "error", err)
-	}
-	return err == nil && owner == csrfOwner(r)
-}
-
-func csrfOwner(r *http.Request) string {
-	if token := sessionTokenFromRequest(r); token != "" {
-		return "session:" + token
-	}
-	return "guest"
-}
-
-func IsLoggedIn(r *http.Request) bool {
-	return getSession(r) != nil
-}
-
-func IsPlatformAdmin(r *http.Request) bool {
-	sess := getSession(r)
-	return sess != nil && sess.IsPlatformAdmin
-}
-
-func IsSubAdmin(r *http.Request) bool {
-	sess := getSession(r)
-	return sess != nil && sess.IsSubAdmin
-}
-
-func IsAdmin(r *http.Request) bool {
-	sess := getSession(r)
-	return sess != nil && (sess.IsPlatformAdmin || sess.IsSubAdmin)
-}
-
-func GetCurrentSession(r *http.Request) *sessionData {
-	return getSession(r)
-}
+// --- IP / 工具函数 ---
 
 func GetClientIP(r *http.Request) string {
 	if os.Getenv("TRUST_PROXY_HEADERS") == "true" {
@@ -235,12 +42,18 @@ func GetClientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
+func parseInt64(value string) (int64, error) {
+	return strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+}
+
 func secondsRemaining(d time.Duration) int {
 	if d <= 0 {
 		return 1
 	}
 	return int((d + time.Second - 1) / time.Second)
 }
+
+// --- 限流工具 ---
 
 func rateLimitKey(prefix string, parts ...string) string {
 	sum := sha256.Sum256([]byte(strings.Join(parts, "|")))
@@ -249,10 +62,10 @@ func rateLimitKey(prefix string, parts ...string) string {
 
 func failureLockState(key string, maxFailures int) (bool, time.Duration, error) {
 	cnt, err := rdb.Get(context.Background(), key).Int64()
-	if err == redis.Nil {
-		return false, 0, nil
-	}
 	if err != nil {
+		if err.Error() == "redis: nil" {
+			return false, 0, nil
+		}
 		return false, 0, err
 	}
 	if cnt < int64(maxFailures) {
@@ -279,11 +92,13 @@ func recordFailure(key string, ttl time.Duration) error {
 
 func clearFailures(key string) error {
 	err := rdb.Del(context.Background(), key).Err()
-	if err == redis.Nil {
+	if err != nil && err.Error() == "redis: nil" {
 		return nil
 	}
 	return err
 }
+
+// --- Auth 辅助 ---
 
 func shouldBePlatformAdmin(email string) bool {
 	adminEmails := strings.Split(os.Getenv("PLATFORM_ADMIN_EMAILS"), ",")
@@ -300,7 +115,6 @@ func ensureUserTenant(user *models.User) (*models.UserTenant, error) {
 	if err := db.AcceptPendingInvites(user.ID, user.Email); err != nil {
 		return nil, err
 	}
-
 	tenant, err := db.PickActiveTenant(user.ID, user.LastTenantID)
 	if err != nil {
 		return nil, err
@@ -308,7 +122,6 @@ func ensureUserTenant(user *models.User) (*models.UserTenant, error) {
 	if tenant != nil {
 		return tenant, nil
 	}
-
 	personalTenant, err := db.CreatePersonalTenantForUser(user.ID, user.DisplayName, user.Email)
 	if err != nil {
 		return nil, err
@@ -343,10 +156,30 @@ func createUserSession(w http.ResponseWriter, user *models.User, tenant *models.
 }
 
 func loginPageData(title string) map[string]interface{} {
-	return map[string]interface{}{
-		"Title": title,
-	}
+	return map[string]interface{}{"Title": title}
 }
+
+func safeLocalRedirect(referrer, host string) string {
+	if strings.TrimSpace(referrer) == "" {
+		return "/"
+	}
+	parsed, err := url.Parse(referrer)
+	if err != nil {
+		return "/"
+	}
+	if parsed.Host != "" && !strings.EqualFold(parsed.Host, host) {
+		return "/"
+	}
+	if !strings.HasPrefix(parsed.Path, "/") {
+		return "/"
+	}
+	if parsed.RawQuery == "" {
+		return parsed.Path
+	}
+	return parsed.Path + "?" + parsed.RawQuery
+}
+
+// --- Handlers ---
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
 	sess, err := loadActiveSession(w, r)
@@ -361,7 +194,11 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		RenderTemplate(w, r, "login.html", loginPageData("登录 - Skills Hub"))
+		data := loginPageData("登录 - Skills Hub")
+		if errMsg := r.URL.Query().Get("error"); errMsg != "" {
+			data["Error"] = errMsg
+		}
+		RenderTemplate(w, r, "login.html", data)
 		return
 	}
 
@@ -382,7 +219,6 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 防暴力破解：IP + 邮箱维度限流
 	ip := GetClientIP(r)
 	loginIPKey := rateLimitKey("ratelimit:login-ip:", ip)
 	loginEmailKey := rateLimitKey("ratelimit:login-email:", normalizeEmail(email))
@@ -397,7 +233,6 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 校验图形验证码
 	if !validateCaptcha(r, captchaInput) {
 		_ = recordFailure(loginIPKey, loginLockTTL)
 		data["Error"] = "图形验证码错误，请重新输入"
@@ -438,7 +273,6 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		RenderTemplate(w, r, "login.html", data)
 		return
 	}
-	// 登录成功，清除失败计数
 	_ = clearFailures(loginIPKey)
 	_ = clearFailures(loginEmailKey)
 
@@ -476,9 +310,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		RenderTemplate(w, r, "register.html", map[string]interface{}{
-			"Title": "注册 - Skills Hub",
-		})
+		RenderTemplate(w, r, "register.html", map[string]interface{}{"Title": "注册 - Skills Hub"})
 		return
 	}
 
@@ -492,9 +324,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 	code := strings.TrimSpace(r.FormValue("code"))
 	captchaInput := strings.TrimSpace(r.FormValue("captcha"))
 	data := map[string]interface{}{
-		"Title":       "注册 - Skills Hub",
-		"Email":       email,
-		"DisplayName": displayName,
+		"Title": "注册 - Skills Hub", "Email": email, "DisplayName": displayName,
 	}
 
 	if displayName == "" || email == "" || code == "" {
@@ -503,7 +333,6 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 防暴力破解：IP 维度限流
 	regIPKey := rateLimitKey("ratelimit:register-ip:", GetClientIP(r))
 	if locked, remaining, _ := failureLockState(regIPKey, maxLoginFailures); locked {
 		data["Error"] = fmt.Sprintf("注册尝试次数过多，请 %d 秒后重试", secondsRemaining(remaining))
@@ -511,7 +340,6 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 校验图形验证码
 	if !validateCaptcha(r, captchaInput) {
 		_ = recordFailure(regIPKey, loginLockTTL)
 		data["Error"] = "图形验证码错误，请重新输入"
@@ -529,7 +357,6 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		RenderTemplate(w, r, "register.html", data)
 		return
 	}
-	// 注册时校验邮箱类型限制
 	if ok, msg := validateEmailForRegistration(email); !ok {
 		data["Error"] = msg
 		RenderTemplate(w, r, "register.html", data)
@@ -652,6 +479,8 @@ func SwitchTenant(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, safeLocalRedirect(r.Referer(), r.Host), http.StatusSeeOther)
 }
 
+// --- Middleware ---
+
 func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sess, err := loadActiveSession(w, r)
@@ -668,10 +497,8 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// OptionalAuth 刷新已有 session 但不强制登录，让页面对未登录用户可见
 func OptionalAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 有 session 就刷新，没有也放行
 		if _, err := loadActiveSession(w, r); err != nil {
 			logSessionRefreshError(err)
 		}
@@ -717,29 +544,4 @@ func RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
-}
-
-func parseInt64(value string) (int64, error) {
-	return strconv.ParseInt(strings.TrimSpace(value), 10, 64)
-}
-
-func safeLocalRedirect(referrer, host string) string {
-	if strings.TrimSpace(referrer) == "" {
-		return "/"
-	}
-
-	parsed, err := url.Parse(referrer)
-	if err != nil {
-		return "/"
-	}
-	if parsed.Host != "" && !strings.EqualFold(parsed.Host, host) {
-		return "/"
-	}
-	if !strings.HasPrefix(parsed.Path, "/") {
-		return "/"
-	}
-	if parsed.RawQuery == "" {
-		return parsed.Path
-	}
-	return parsed.Path + "?" + parsed.RawQuery
 }
