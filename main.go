@@ -116,6 +116,7 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/collections/delete", handlers.RequireAuth(handlers.CollectionDeleteHandler))
 	mux.HandleFunc("/api/rate", handlers.RequireAuth(handlers.RateSkillHandler))
 	mux.HandleFunc("/api/comment", handlers.RequireAuth(handlers.CommentSkillHandler))
+	mux.HandleFunc("/api/comment/vote", handlers.RequireAuth(handlers.CommentVoteHandler))
 	mux.HandleFunc("/api/markdown/preview", handlers.RequireAuth(handlers.MarkdownPreviewHandler))
 
 	mux.HandleFunc("/admin", handlers.RequireAdmin(handlers.AdminDashboardHandler))
