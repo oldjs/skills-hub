@@ -6,6 +6,21 @@
     <!-- 立即应用主题，防止页面闪烁 -->
     <script>(function(){var t=localStorage.getItem('skills-hub-theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')})()</script>
     <title>{{template "title" .}}</title>
+    {{if .MetaDescription}}<meta name="description" content="{{.MetaDescription}}">{{end}}
+    {{if .MetaKeywords}}<meta name="keywords" content="{{.MetaKeywords}}">{{end}}
+    {{if .CanonicalURL}}<link rel="canonical" href="{{.CanonicalURL}}">{{end}}
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Skills Hub">
+    <meta property="og:title" content="{{template "title" .}}">
+    {{if .MetaDescription}}<meta property="og:description" content="{{.MetaDescription}}">{{end}}
+    {{if .OGImage}}<meta property="og:image" content="{{.OGImage}}">{{end}}
+    {{if .CanonicalURL}}<meta property="og:url" content="{{.CanonicalURL}}">{{end}}
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{template "title" .}}">
+    {{if .MetaDescription}}<meta name="twitter:description" content="{{.MetaDescription}}">{{end}}
+    {{if .OGImage}}<meta name="twitter:image" content="{{.OGImage}}">{{end}}
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">

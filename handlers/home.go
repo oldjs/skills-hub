@@ -42,14 +42,17 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := PageData{
-		Title:         "Skills Hub - OpenClaw 技能中心",
-		Skills:        skills,
-		Categories:    categories,
-		CurrentPage:   "home",
-		Pagination:    NewPaginationData(currentPage, perPage, totalSkills),
-		TotalSkills:   totalSkills,
-		CategoryCount: len(categories),
-		Error:         pageError,
+		Title:           "Skills Hub - OpenClaw 技能中心",
+		MetaDescription: "Skills Hub 是 OpenClaw 智能体技能市场，探索、发现并安装全球开发者构建的优质 AI Skills。",
+		MetaKeywords:    "OpenClaw,Skills,AI,智能体,技能市场,插件,自动化",
+		CanonicalURL:    canonicalURL("/"),
+		Skills:          skills,
+		Categories:      categories,
+		CurrentPage:     "home",
+		Pagination:      NewPaginationData(currentPage, perPage, totalSkills),
+		TotalSkills:     totalSkills,
+		CategoryCount:   len(categories),
+		Error:           pageError,
 	}
 
 	RenderTemplate(w, r, "index.html", data)

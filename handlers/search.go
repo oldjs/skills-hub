@@ -86,18 +86,26 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	metaDesc := "在 Skills Hub 中搜索 OpenClaw 技能"
+	if query != "" {
+		metaDesc = "搜索结果: " + query + " - Skills Hub"
+	}
+
 	data := PageData{
-		Title:         title,
-		Skills:        skills,
-		Categories:    categories,
-		Query:         query,
-		Category:      category,
-		SortBy:        sortBy,
-		CurrentPage:   "search",
-		Pagination:    NewPaginationData(currentPage, perPage, totalSkills),
-		TotalSkills:   totalSkills,
-		CategoryCount: len(categories),
-		Error:         pageError,
+		Title:           title,
+		MetaDescription: metaDesc,
+		MetaKeywords:    "OpenClaw,Skills,搜索,技能," + query,
+		CanonicalURL:    canonicalURL("/search"),
+		Skills:          skills,
+		Categories:      categories,
+		Query:           query,
+		Category:        category,
+		SortBy:          sortBy,
+		CurrentPage:     "search",
+		Pagination:      NewPaginationData(currentPage, perPage, totalSkills),
+		TotalSkills:     totalSkills,
+		CategoryCount:   len(categories),
+		Error:           pageError,
 	}
 
 	RenderTemplate(w, r, "search.html", data)

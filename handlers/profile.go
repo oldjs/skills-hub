@@ -54,9 +54,16 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	profileDesc := profile.DisplayName + " 在 Skills Hub 的个人主页"
+	if profile.Bio != "" {
+		profileDesc = truncateText(profile.Bio, 160)
+	}
+
 	data := PageData{
-		Title:          profile.DisplayName + " - Skills Hub",
-		CurrentPage:    "profile",
+		Title:           profile.DisplayName + " - Skills Hub",
+		MetaDescription: profileDesc,
+		CanonicalURL:    canonicalURL("/user?id=" + userIDStr),
+		CurrentPage:     "profile",
 		ProfileUser:    profile,
 		ProfileTab:     tab,
 		ProfileRatings: ratings,

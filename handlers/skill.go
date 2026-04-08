@@ -107,16 +107,26 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		errMsg = "图形验证码错误，请重新输入后提交评论"
 	}
 
+	// SEO: 技能详情页最重要，给足 meta 数据
+	metaDesc := truncateText(skill.Summary, 160)
+	if metaDesc == "" {
+		metaDesc = skill.DisplayName + " - OpenClaw 智能体技能"
+	}
+	metaKw := skill.DisplayName + "," + skill.Categories + ",OpenClaw,Skills"
+
 	data := PageData{
-		Title:         skill.DisplayName + " - Skills Hub",
-		Skill:         skill,
-		Categories:    categories,
-		CurrentPage:   "skill",
-		Comments:      comments,
-		UserRating:    userRating,
-		RelatedSkills: relatedSkills,
-		Error:         errMsg,
-		Info:          pageInfo,
+		Title:           skill.DisplayName + " - Skills Hub",
+		MetaDescription: metaDesc,
+		MetaKeywords:    metaKw,
+		CanonicalURL:    canonicalURL("/skill?slug=" + skill.Slug),
+		Skill:           skill,
+		Categories:      categories,
+		CurrentPage:     "skill",
+		Comments:        comments,
+		UserRating:      userRating,
+		RelatedSkills:   relatedSkills,
+		Error:           errMsg,
+		Info:            pageInfo,
 	}
 
 	RenderTemplate(w, r, "skill.html", data)

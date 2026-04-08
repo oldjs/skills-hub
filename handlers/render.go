@@ -130,6 +130,10 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	target["Skill"] = data.Skill
 	target["Comments"] = data.Comments
 	target["UserRating"] = data.UserRating
+	target["MetaDescription"] = data.MetaDescription
+	target["MetaKeywords"] = data.MetaKeywords
+	target["CanonicalURL"] = data.CanonicalURL
+	target["OGImage"] = data.OGImage
 	if data.RelatedSkills != nil {
 		target["RelatedSkills"] = data.RelatedSkills
 	}
@@ -218,6 +222,11 @@ type PageData struct {
 	AdminSkill      *models.AdminSkill
 	APIKeys         []models.APIKey
 	GeneratedAPIKey string
+	// SEO
+	MetaDescription string
+	MetaKeywords    string
+	CanonicalURL    string
+	OGImage         string
 	// Profile 页
 	ProfileUser     *models.UserProfile
 	ProfileTab      string
