@@ -59,6 +59,45 @@
                     </div>
                 </div>
 
+                <!-- SKILL.md 预览区（选文件后异步加载） -->
+                <div id="preview-section" class="hidden mt-6">
+                    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                        <div class="border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50">
+                            <h2 class="text-base font-semibold text-slate-900">SKILL.md 预览</h2>
+                            <span id="preview-status" class="text-xs text-slate-400">解析中...</span>
+                        </div>
+                        <!-- 元数据 -->
+                        <div id="preview-meta" class="hidden px-6 py-4 grid grid-cols-2 gap-3 border-b border-slate-100">
+                            <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">名称</div>
+                                <div id="preview-name" class="text-sm font-medium text-slate-800 truncate">-</div>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">版本</div>
+                                <div id="preview-version" class="text-sm font-medium text-slate-800 truncate">-</div>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">分类</div>
+                                <div id="preview-categories" class="text-sm font-medium text-slate-800 truncate">-</div>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">作者</div>
+                                <div id="preview-author" class="text-sm font-medium text-slate-800 truncate">-</div>
+                            </div>
+                        </div>
+                        <!-- 渲染内容 -->
+                        <div id="preview-content" class="px-6 py-4 prose prose-slate prose-sm max-w-none
+                            prose-headings:text-slate-900 prose-headings:font-semibold
+                            prose-p:text-slate-600 prose-p:leading-7
+                            prose-a:text-orange-500 prose-a:no-underline hover:prose-a:underline
+                            prose-code:text-orange-600 prose-code:bg-orange-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                            prose-pre:bg-slate-900 prose-pre:text-slate-200 prose-pre:rounded-xl
+                            prose-li:text-slate-600">
+                            <p class="text-sm text-slate-400">选择文件后，这里会显示 SKILL.md 的渲染预览。</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 图形验证码 -->
                 <div class="mt-6">
                     <label class="mb-1.5 block text-sm font-medium text-slate-600">图形验证码</label>
@@ -110,6 +149,8 @@
 </div>
 
 <script>
+var csrfToken = '{{.CSRFToken}}';
+
 (function() {
     var dropZone = document.getElementById('drop-zone');
     var fileInput = document.getElementById('file-input');
@@ -120,8 +161,12 @@
     var submitBtn = document.getElementById('submit-btn');
     var dropText = document.getElementById('drop-text');
     var uploadForm = document.getElementById('upload-form');
+    var previewSection = document.getElementById('preview-section');
+    var previewStatus = document.getElementById('preview-status');
+    var previewMeta = document.getElementById('preview-meta');
+    var previewContent = document.getElementById('preview-content');
 
-    // 拖拽效果
+    // 拖拽进入效果
     ['dragenter', 'dragover'].forEach(function(eventName) {
         dropZone.addEventListener(eventName, function(e) {
             e.preventDefault();
@@ -136,34 +181,53 @@
         });
     });
 
+    // 拖拽放下
     dropZone.addEventListener('drop', function(e) {
         var files = e.dataTransfer.files;
         if (files.length > 0) {
             fileInput.files = files;
-            showFileInfo(files[0]);
+            handleFileSelected(files[0]);
         }
     });
 
+    // 全局拖拽支持（拖到页面任意位置）
+    document.addEventListener('dragover', function(e) { e.preventDefault(); });
+    document.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (e.target === fileInput || dropZone.contains(e.target)) return;
+        var files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].name.toLowerCase().endsWith('.zip')) {
+            fileInput.files = files;
+            handleFileSelected(files[0]);
+        }
+    });
+
+    // 点击选择文件
     fileInput.addEventListener('change', function() {
         if (fileInput.files.length > 0) {
-            showFileInfo(fileInput.files[0]);
+            handleFileSelected(fileInput.files[0]);
         }
     });
 
+    // 移除已选文件
     removeFile.addEventListener('click', function() {
         fileInput.value = '';
         fileInfo.classList.add('hidden');
+        previewSection.classList.add('hidden');
         dropText.textContent = '点击选择或拖拽 ZIP 文件到这里';
         submitBtn.disabled = true;
     });
 
-    function showFileInfo(file) {
+    // 选择文件后的统一处理
+    function handleFileSelected(file) {
+        // 校验扩展名
         if (!file.name.toLowerCase().endsWith('.zip')) {
             fileInput.value = '';
             submitBtn.disabled = true;
             showToast('请选择 ZIP 文件');
             return;
         }
+        // 校验大小
         if (file.size > 10 * 1024 * 1024) {
             fileInput.value = '';
             submitBtn.disabled = true;
@@ -171,11 +235,59 @@
             return;
         }
 
+        // 显示文件信息
         fileName.textContent = file.name;
         fileSize.textContent = formatBytes(file.size);
         dropText.textContent = '文件已选择，可直接提交上传';
         fileInfo.classList.remove('hidden');
         submitBtn.disabled = false;
+
+        // 触发 SKILL.md 预览
+        fetchPreview(file);
+    }
+
+    // 调后端 API 预览 SKILL.md
+    function fetchPreview(file) {
+        previewSection.classList.remove('hidden');
+        previewStatus.textContent = '解析中...';
+        previewMeta.classList.add('hidden');
+        previewContent.innerHTML = '<p class="text-sm text-slate-400">正在解析 ZIP 中的 SKILL.md...</p>';
+
+        var formData = new FormData();
+        formData.append('zipfile', file);
+        formData.append('csrf_token', csrfToken);
+
+        fetch('/api/upload/preview', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(resp) {
+            if (!resp.ok) {
+                return resp.json().then(function(data) { throw new Error(data.error || '预览失败'); });
+            }
+            return resp.json();
+        })
+        .then(function(data) {
+            previewStatus.textContent = '解析完成';
+
+            // 填充元数据
+            document.getElementById('preview-name').textContent = data.name || '-';
+            document.getElementById('preview-version').textContent = data.version || '-';
+            document.getElementById('preview-categories').textContent = data.categories || '-';
+            document.getElementById('preview-author').textContent = data.author || '-';
+            previewMeta.classList.remove('hidden');
+
+            // 填充渲染内容
+            if (data.contentHTML) {
+                previewContent.innerHTML = data.contentHTML;
+            } else {
+                previewContent.innerHTML = '<p class="text-sm text-slate-400">SKILL.md 无正文内容。</p>';
+            }
+        })
+        .catch(function(err) {
+            previewStatus.textContent = '解析失败';
+            previewContent.innerHTML = '<p class="text-sm text-red-500">' + (err.message || '预览解析失败，文件仍可提交上传。') + '</p>';
+        });
     }
 
     function formatBytes(bytes) {
@@ -186,8 +298,24 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
+    // 提交前校验
     if (uploadForm) {
-        uploadForm.addEventListener('submit', function() {
+        uploadForm.addEventListener('submit', function(e) {
+            // 文件必须选择
+            if (!fileInput.files.length) {
+                e.preventDefault();
+                showToast('请先选择 ZIP 文件');
+                return;
+            }
+            // 验证码必须填 4 位
+            var captcha = document.getElementById('upload-captcha').value.trim();
+            if (captcha.length !== 4) {
+                e.preventDefault();
+                showToast('请输入 4 位验证码');
+                document.getElementById('upload-captcha').focus();
+                return;
+            }
+            // 禁用按钮防止重复提交
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
         });

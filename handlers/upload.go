@@ -3,6 +3,7 @@ package handlers
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -14,9 +15,93 @@ import (
 
 	"skills-hub/db"
 	"skills-hub/models"
+	"skills-hub/security"
 )
 
 const maxUploadSize = 10 << 20 // 10MB
+
+// POST 预览 ZIP 中的 SKILL.md，不入库
+func UploadPreviewHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	sess := GetCurrentSession(r)
+	if sess == nil || sess.CurrentTenantID == 0 {
+		http.Error(w, "未登录", http.StatusUnauthorized)
+		return
+	}
+	if !ValidateCSRFToken(r) {
+		http.Error(w, "无效的请求", http.StatusForbidden)
+		return
+	}
+
+	// 限制请求体大小
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		writeJSONError(w, "文件大小超过 10MB 限制", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("zipfile")
+	if err != nil {
+		writeJSONError(w, "请选择 ZIP 文件", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	if !strings.HasSuffix(strings.ToLower(header.Filename), ".zip") {
+		writeJSONError(w, "只支持 ZIP 格式的文件", http.StatusBadRequest)
+		return
+	}
+
+	buf, err := io.ReadAll(file)
+	if err != nil {
+		writeJSONError(w, "读取文件失败", http.StatusBadRequest)
+		return
+	}
+
+	// 解压找 SKILL.md
+	zipReader, err := zip.NewReader(bytes.NewReader(buf), int64(len(buf)))
+	if err != nil {
+		writeJSONError(w, "无效的 ZIP 文件", http.StatusBadRequest)
+		return
+	}
+
+	skillMD, err := findSkillMD(zipReader)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	meta := parseSkillMD(skillMD)
+
+	// 渲染 Markdown 预览
+	contentHTML := ""
+	rendered, err := security.RenderSkillMarkdown(skillMD)
+	if err != nil {
+		log.Printf("upload preview markdown render failed: %v", err)
+	} else {
+		contentHTML = string(rendered)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"name":        meta.Name,
+		"description": meta.Description,
+		"version":     meta.Version,
+		"categories":  meta.Categories,
+		"author":      meta.Author,
+		"contentHTML": contentHTML,
+	})
+}
+
+func writeJSONError(w http.ResponseWriter, msg string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
 
 // GET 显示上传页面，POST 处理上传
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
