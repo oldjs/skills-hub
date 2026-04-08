@@ -73,6 +73,8 @@ func main() {
 }
 
 func setupRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/sitemap.xml", handlers.SitemapHandler)
+	mux.HandleFunc("/robots.txt", handlers.RobotsTxtHandler)
 	mux.HandleFunc("/login", handlers.UserLogin)
 	mux.HandleFunc("/register", handlers.UserRegister)
 	mux.HandleFunc("/logout", handlers.UserLogout)
