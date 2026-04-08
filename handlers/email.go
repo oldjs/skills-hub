@@ -19,7 +19,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// 邮箱这层收紧一点，直接把常见的 HTML 特殊字符挡在门外。
+// 只允许 QQ 邮箱（纯数字@qq.com）和 Gmail
+var qqEmailRegex = regexp.MustCompile(`^\d+@qq\.com$`)
+var gmailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@gmail\.com$`)
+
+// 通用格式校验（宽松，仅用于兜底）
 var emailRegex = regexp.MustCompile(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`)
 
 const (
@@ -29,11 +33,55 @@ const (
 )
 
 func normalizeEmail(email string) string {
-	return strings.ToLower(strings.TrimSpace(email))
+	email = strings.ToLower(strings.TrimSpace(email))
+	// Gmail 登录时也做规范化：去掉 local 部分的点号，使不同写法匹配同一账户
+	if isGmail(email) {
+		email = normalizeGmailAddress(email)
+	}
+	return email
 }
 
+// 基础格式校验（不含邮箱类型限制，只检查格式合法性）
 func validateEmail(email string) bool {
 	return emailRegex.MatchString(email)
+}
+
+// 注册专用校验：只允许 QQ 邮箱和 Gmail，Gmail 禁止 + 别名
+// 返回 (是否通过, 拒绝原因)
+func validateEmailForRegistration(email string) (bool, string) {
+	if qqEmailRegex.MatchString(email) {
+		return true, ""
+	}
+	if !gmailRegex.MatchString(email) {
+		return false, "仅支持纯数字 QQ 邮箱（如 123456@qq.com）或 Gmail 注册"
+	}
+	// Gmail 禁止 + 别名
+	local := email[:strings.Index(email, "@")]
+	if strings.Contains(local, "+") {
+		return false, "Gmail 注册不支持 + 别名（如 user+tag@gmail.com），请使用原始邮箱"
+	}
+	return true, ""
+}
+
+func isGmail(email string) bool {
+	return strings.HasSuffix(email, "@gmail.com")
+}
+
+// Gmail 规范化：去掉 local 部分的点号和 + 后缀，保证唯一性
+// u.ser+tag@gmail.com -> user@gmail.com
+func normalizeGmailAddress(email string) string {
+	parts := strings.SplitN(email, "@", 2)
+	if len(parts) != 2 {
+		return email
+	}
+	local := parts[0]
+	// 去掉 + 及后面的内容
+	if idx := strings.Index(local, "+"); idx >= 0 {
+		local = local[:idx]
+	}
+	// 去掉所有点号
+	local = strings.ReplaceAll(local, ".", "")
+	return local + "@" + parts[1]
 }
 
 func generateVerificationCode() (string, error) {
@@ -160,6 +208,15 @@ func SendCodeHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "邮箱格式不正确"})
 		return
+	}
+
+	// 注册时校验邮箱类型限制（QQ / Gmail）
+	if purpose == "register" {
+		if ok, msg := validateEmailForRegistration(email); !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+			return
+		}
 	}
 
 	user, err := db.GetUserByEmail(email)

@@ -490,6 +490,12 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		RenderTemplate(w, r, "register.html", data)
 		return
 	}
+	// 注册时校验邮箱类型限制
+	if ok, msg := validateEmailForRegistration(email); !ok {
+		data["Error"] = msg
+		RenderTemplate(w, r, "register.html", data)
+		return
+	}
 
 	existingUser, err := db.GetUserByEmail(email)
 	if err != nil {
