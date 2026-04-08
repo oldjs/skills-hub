@@ -46,6 +46,8 @@ func InitAuth() error {
 	return rdb.Ping(ctx).Err()
 }
 
+func GetRedisClient() *redis.Client { return rdb }
+
 func CloseAuth() {
 	if rdb != nil {
 		_ = rdb.Close()

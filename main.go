@@ -32,6 +32,8 @@ func main() {
 		log.Fatalf("Failed to initialize auth: %v", err)
 	}
 	defer handlers.CloseAuth()
+	// 搜索结果缓存共用 auth 的 Redis 客户端
+	db.SetCacheClient(handlers.GetRedisClient())
 
 	handlers.InitTemplates("./templates")
 
