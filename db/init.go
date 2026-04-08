@@ -59,6 +59,10 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateAddCommentParentID(); err != nil {
+			return
+		}
+
 		if err = createIndexes(); err != nil {
 			return
 		}
@@ -250,6 +254,7 @@ func createIndexes() error {
 		// Profile 页用的索引
 		`CREATE INDEX IF NOT EXISTS idx_skill_comments_user_id ON skill_comments(user_id, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_skill_ratings_user_created ON skill_ratings(user_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_skill_comments_parent ON skill_comments(parent_id)`,
 	}
 
 	for _, statement := range statements {
@@ -499,6 +504,21 @@ func migrateAddSubAdminColumn() error {
 
 	if _, err := database.Exec(`ALTER TABLE users ADD COLUMN is_sub_admin INTEGER NOT NULL DEFAULT 0`); err != nil {
 		log.Printf("添加 is_sub_admin 列失败（可能已存在）: %v", err)
+	}
+	return nil
+}
+
+// 给评论表加 parent_id 字段（楼中楼回复）
+func migrateAddCommentParentID() error {
+	hasParentID, err := tableHasColumn("skill_comments", "parent_id")
+	if err != nil {
+		return err
+	}
+	if hasParentID {
+		return nil
+	}
+	if _, err := database.Exec(`ALTER TABLE skill_comments ADD COLUMN parent_id INTEGER DEFAULT NULL`); err != nil {
+		log.Printf("添加 parent_id 列失败（可能已存在）: %v", err)
 	}
 	return nil
 }

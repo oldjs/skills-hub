@@ -201,16 +201,16 @@
                         </div>
                     </form>
 
-                    <!-- 评论列表 -->
+                    <!-- 评论列表（支持嵌套回复） -->
                     {{if .Comments}}
                     <div class="space-y-4">
                         {{range .Comments}}
-                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4" id="comment-{{.ID}}">
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center gap-2">
-                                <div class="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600 text-xs font-bold">
-                                    {{if .DisplayName}}{{firstChar .DisplayName}}{{else}}?{{end}}
-                                </div>
+                                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600 text-xs font-bold">
+                                        {{if .DisplayName}}{{firstChar .DisplayName}}{{else}}?{{end}}
+                                    </div>
                                     <div>
                                         <a href="/user?id={{.UserID}}" class="text-sm font-medium text-slate-700 hover:text-orange-500 transition">{{if .DisplayName}}{{.DisplayName}}{{else}}匿名用户{{end}}</a>
                                         <span class="text-xs text-slate-400 ml-2">{{maskEmail .Email}}</span>
@@ -219,6 +219,52 @@
                                 <span class="text-xs text-slate-400">{{formatTime .CreatedAt}}</span>
                             </div>
                             <div class="prose prose-slate prose-sm max-w-none prose-p:text-slate-600 prose-p:leading-7 prose-a:text-orange-500 prose-code:text-orange-600 prose-code:bg-orange-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-200 prose-li:text-slate-600">{{.ContentHTML}}</div>
+
+                            <!-- 回复按钮 -->
+                            <button type="button" onclick="toggleReplyForm({{.ID}})" class="mt-2 text-xs text-slate-400 hover:text-orange-500 transition">
+                                <i class="fas fa-reply mr-1"></i>回复
+                            </button>
+
+                            <!-- 子评论列表 -->
+                            {{if .Replies}}
+                            <div class="mt-3 ml-4 sm:ml-8 space-y-3 border-l-2 border-slate-200 pl-4">
+                                {{range .Replies}}
+                                <div class="rounded-lg bg-white p-3">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <div class="flex items-center gap-2">
+                                            <div class="flex h-6 w-6 items-center justify-center rounded-full bg-orange-50 text-orange-500 text-[10px] font-bold">
+                                                {{if .DisplayName}}{{firstChar .DisplayName}}{{else}}?{{end}}
+                                            </div>
+                                            <a href="/user?id={{.UserID}}" class="text-xs font-medium text-slate-700 hover:text-orange-500 transition">{{if .DisplayName}}{{.DisplayName}}{{else}}匿名用户{{end}}</a>
+                                        </div>
+                                        <span class="text-[10px] text-slate-400">{{formatTime .CreatedAt}}</span>
+                                    </div>
+                                    <div class="prose prose-slate prose-sm max-w-none prose-p:text-slate-600 prose-p:leading-7 prose-a:text-orange-500 prose-code:text-orange-600 prose-code:bg-orange-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-200 prose-li:text-slate-600">{{.ContentHTML}}</div>
+                                </div>
+                                {{end}}
+                            </div>
+                            {{end}}
+
+                            <!-- 内联回复表单（默认隐藏） -->
+                            <div id="reply-form-{{.ID}}" class="hidden mt-3 ml-4 sm:ml-8 border-l-2 border-orange-200 pl-4">
+                                <form action="/api/comment" method="POST" class="space-y-3">
+                                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                    <input type="hidden" name="skill_id" value="{{$.Skill.ID}}">
+                                    <input type="hidden" name="slug" value="{{$.Skill.Slug}}">
+                                    <input type="hidden" name="parent_id" value="{{.ID}}">
+                                    <textarea name="content" rows="3" maxlength="500" placeholder="回复 {{.DisplayName}}..." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-orange-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-orange-100 resize-none"></textarea>
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex gap-2 flex-1 min-w-0">
+                                            <input type="text" name="captcha" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="验证码" class="w-24 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm uppercase outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required>
+                                            <img src="/captcha" alt="验证码" class="h-[36px] w-[108px] cursor-pointer rounded-lg border border-orange-100 bg-orange-50 object-cover" onclick="this.src='/captcha?ts='+Date.now()">
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <button type="button" onclick="toggleReplyForm({{.ID}})" class="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-500 hover:bg-slate-100">取消</button>
+                                            <button type="submit" class="rounded-lg bg-orange-500 px-3 py-2 text-xs font-medium text-white hover:bg-orange-600">回复</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                         {{end}}
                     </div>
@@ -316,6 +362,27 @@
         </a>
     </div>
 </div>
+
+<!-- 回复表单切换 -->
+<script>
+function toggleReplyForm(commentId) {
+    // 先关闭所有已打开的回复表单
+    document.querySelectorAll('[id^="reply-form-"]').forEach(function(el) {
+        if (el.id !== 'reply-form-' + commentId) {
+            el.classList.add('hidden');
+        }
+    });
+    // 切换当前回复表单
+    var form = document.getElementById('reply-form-' + commentId);
+    if (form) {
+        form.classList.toggle('hidden');
+        if (!form.classList.contains('hidden')) {
+            var textarea = form.querySelector('textarea');
+            if (textarea) textarea.focus();
+        }
+    }
+}
+</script>
 
 <!-- 评论预览 -->
 <script>

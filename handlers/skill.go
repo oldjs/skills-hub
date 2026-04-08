@@ -57,13 +57,22 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		comments = []models.SkillComment{}
 	}
 	for i := range comments {
-		// 评论展示统一走后端 Markdown 渲染，模板里不再拼原始内容。
+		// 评论展示统一走后端 Markdown 渲染
 		rendered, err := security.RenderCommentMarkdown(comments[i].Content)
 		if err != nil {
 			log.Printf("comment markdown render failed: %v", err)
 			continue
 		}
 		comments[i].ContentHTML = rendered
+		// 子评论也要渲染
+		for j := range comments[i].Replies {
+			rr, err := security.RenderCommentMarkdown(comments[i].Replies[j].Content)
+			if err != nil {
+				log.Printf("reply markdown render failed: %v", err)
+				continue
+			}
+			comments[i].Replies[j].ContentHTML = rr
+		}
 	}
 	if skill.Content != "" {
 		// SKILL.md 详情页也改成后端渲染，顺手把旧数据一起兜底清洗。

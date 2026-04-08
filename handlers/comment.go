@@ -12,6 +12,7 @@ import (
 	"skills-hub/security"
 )
 
+
 // POST 提交评论
 func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -59,7 +60,16 @@ func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := db.AddComment(sess.CurrentTenantID, skillID, sess.UserID, content); err != nil {
+	// 解析可选的 parent_id（回复时传入）
+	var parentID *int64
+	if pidStr := r.FormValue("parent_id"); pidStr != "" {
+		pid, err := strconv.ParseInt(pidStr, 10, 64)
+		if err == nil && pid > 0 {
+			parentID = &pid
+		}
+	}
+
+	if err := db.AddComment(sess.CurrentTenantID, skillID, sess.UserID, content, parentID); err != nil {
 		if db.IsSkillNotFound(err) {
 			http.Error(w, "Skill 不存在或已无权访问", http.StatusNotFound)
 			return
