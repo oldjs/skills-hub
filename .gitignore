@@ -1,5 +1,5 @@
-# Binaries
-skills-hub
+# Binaries (只忽略根目录的编译产物，不忽略 skills/ 子目录)
+/skills-hub
 *.exe
 *.exe~
 *.dll
