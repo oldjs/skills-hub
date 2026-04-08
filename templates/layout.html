@@ -141,6 +141,11 @@
         html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3); }
         html.dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5); }
     </style>
+    <!-- 全局 Organization 结构化数据 -->
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"Organization","name":"Skills Hub","description":"OpenClaw 多租户智能体技能中心"}
+    </script>
+    {{template "jsonld" .}}
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-900 antialiased">
     <nav class="surface-panel sticky top-0 z-50 border-b border-white/70">

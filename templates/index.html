@@ -1,5 +1,11 @@
 {{define "title"}}Skills Hub - OpenClaw 技能中心{{end}}
 
+{{define "jsonld"}}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","name":"Skills Hub","url":"{{.CanonicalURL}}","description":"OpenClaw 多租户智能体技能市场，探索并安装全球开发者构建的优质 AI Skills。","potentialAction":{"@type":"SearchAction","target":"{{.CanonicalURL}}/search?q={search_term_string}","query-input":"required name=search_term_string"}}
+</script>
+{{end}}
+
 {{define "content"}}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
     {{if .Error}}

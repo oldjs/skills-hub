@@ -1,5 +1,13 @@
 {{define "title"}}{{if .ProfileUser}}{{.ProfileUser.DisplayName}}{{else}}用户主页{{end}} - Skills Hub{{end}}
 
+{{define "jsonld"}}
+{{if .ProfileUser}}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"ProfilePage","mainEntity":{"@type":"Person","name":"{{.ProfileUser.DisplayName}}"{{if .ProfileUser.Bio}},"description":"{{.ProfileUser.Bio}}"{{end}}}}
+</script>
+{{end}}
+{{end}}
+
 {{define "content"}}
 {{if .ProfileUser}}
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">

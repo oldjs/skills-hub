@@ -1,5 +1,16 @@
 {{define "title"}}{{if .Skill}}{{.Skill.DisplayName}}{{else}}技能详情{{end}} - Skills Hub{{end}}
 
+{{define "jsonld"}}
+{{if .Skill}}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"{{.Skill.DisplayName}}","description":"{{.Skill.Summary}}","applicationCategory":"AI Skill","operatingSystem":"OpenClaw"{{if .Skill.Version}},"softwareVersion":"{{.Skill.Version}}"{{end}}{{if gt .Skill.RatingCount 0}},"aggregateRating":{"@type":"AggregateRating","ratingValue":"{{printf "%.1f" .Skill.AvgRating}}","ratingCount":"{{.Skill.RatingCount}}","bestRating":"5","worstRating":"1"}{{end}},"offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"首页","item":"{{.CanonicalURL}}"},{"@type":"ListItem","position":2,"name":"搜索","item":"{{.CanonicalURL}}/search"},{"@type":"ListItem","position":3,"name":"{{.Skill.DisplayName}}"}]}
+</script>
+{{end}}
+{{end}}
+
 {{define "content"}}
 {{if .Skill}}
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
