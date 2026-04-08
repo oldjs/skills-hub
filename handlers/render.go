@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -41,12 +42,12 @@ func InitTemplates(templateDir string) {
 		}
 		t, err := template.New("layout.html").Funcs(funcMap).ParseFiles(files...)
 		if err != nil {
-			log.Fatalf("Failed to parse template %s: %v", page, err)
+			slog.Error("template parse failed", "page", page, "error", err); os.Exit(1)
 		}
 		templates[page] = t
 	}
 
-	log.Println("Templates initialized")
+	slog.Info("templates initialized")
 }
 
 func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
@@ -58,7 +59,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 
 	csrfToken, err := getOrCreateCSRFToken(w, r)
 	if err != nil {
-		log.Printf("CSRF token error: %v", err)
+		slog.Error("csrf token error", "error", err)
 		http.Error(w, "Template render failed", http.StatusInternalServerError)
 		return
 	}
@@ -72,7 +73,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 	if sess != nil {
 		ctx, err := buildRequestContext(sess.UserID, sess)
 		if err != nil {
-			log.Printf("build request context error: %v", err)
+			slog.Error("build request context error", "error", err)
 			http.Error(w, "Template render failed", http.StatusInternalServerError)
 			return
 		}
@@ -92,7 +93,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 
 	var buf bytes.Buffer
 	if err := t.ExecuteTemplate(&buf, "layout", pageData); err != nil {
-		log.Printf("Template execution error: %v", err)
+		slog.Error("template execution error", "error", err)
 		http.Error(w, "Template render failed", http.StatusInternalServerError)
 		return
 	}

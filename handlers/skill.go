@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"skills-hub/db"
@@ -34,7 +34,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	// 拉评分统计
 	avg, count, err := db.GetSkillRatingStats(tenantID, skill.ID)
 	if err != nil {
-		log.Printf("skill rating stats failed: %v", err)
+		slog.Error("skill rating stats failed", "error", err)
 		pageInfo = "部分互动数据加载失败，已展示基础信息"
 	}
 	skill.AvgRating = avg
@@ -45,7 +45,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	if sess != nil {
 		userRating, err = db.GetUserRating(tenantID, skill.ID, sess.UserID)
 		if err != nil {
-			log.Printf("user rating load failed: %v", err)
+			slog.Error("user rating load failed", "error", err)
 			pageInfo = "部分互动数据加载失败，已展示基础信息"
 		}
 	}
@@ -53,7 +53,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	// 拉评论列表
 	comments, err := db.GetSkillComments(tenantID, skill.ID)
 	if err != nil {
-		log.Printf("skill comments load failed: %v", err)
+		slog.Error("skill comments load failed", "error", err)
 		comments = []models.SkillComment{}
 		pageInfo = "评论暂时加载失败，请稍后刷新重试"
 	}
@@ -64,7 +64,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		// 评论展示统一走后端 Markdown 渲染
 		rendered, err := security.RenderCommentMarkdown(comments[i].Content)
 		if err != nil {
-			log.Printf("comment markdown render failed: %v", err)
+			slog.Error("comment markdown render failed", "error", err)
 			continue
 		}
 		comments[i].ContentHTML = rendered
@@ -72,7 +72,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		for j := range comments[i].Replies {
 			rr, err := security.RenderCommentMarkdown(comments[i].Replies[j].Content)
 			if err != nil {
-				log.Printf("reply markdown render failed: %v", err)
+				slog.Error("reply markdown render failed", "error", err)
 				continue
 			}
 			comments[i].Replies[j].ContentHTML = rr
@@ -82,7 +82,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		// SKILL.md 详情页也改成后端渲染，顺手把旧数据一起兜底清洗。
 		rendered, err := security.RenderSkillMarkdown(skill.Content)
 		if err != nil {
-			log.Printf("skill markdown render failed: %v", err)
+			slog.Error("skill markdown render failed", "error", err)
 		} else {
 			skill.ContentHTML = rendered
 		}
@@ -90,7 +90,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 
 	categories, err := db.GetCategories(tenantID)
 	if err != nil {
-		log.Printf("skill categories load failed: %v", err)
+		slog.Error("skill categories load failed", "error", err)
 		categories = []string{}
 		if pageInfo == "" {
 			pageInfo = "部分页面信息加载失败，已展示核心内容"
@@ -106,7 +106,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	// 拉相关技能推荐
 	relatedSkills, err := db.GetRelatedSkills(tenantID, skill.ID, skill.Categories, 6)
 	if err != nil {
-		log.Printf("related skills load failed: %v", err)
+		slog.Error("related skills load failed", "error", err)
 		relatedSkills = []models.Skill{}
 	}
 

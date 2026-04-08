@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/xml"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -38,7 +38,7 @@ func SitemapHandler(w http.ResponseWriter, r *http.Request) {
 	// 动态页面：所有已审核通过的技能详情页
 	skills, err := db.GetAllApprovedSkillSlugs()
 	if err != nil {
-		log.Printf("sitemap: failed to load skills: %v", err)
+		slog.Error("sitemap skill load failed", "error", err)
 	} else {
 		for _, s := range skills {
 			urls = append(urls, siteURL{

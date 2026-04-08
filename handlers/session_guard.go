@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"skills-hub/db"
@@ -137,6 +137,6 @@ func sessionChanged(left, right *sessionData) bool {
 
 func logSessionRefreshError(err error) {
 	if err != nil {
-		log.Printf("session refresh failed: %v", err)
+		slog.Error("session refresh failed", "error", err)
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -95,14 +95,14 @@ func getSession(r *http.Request) *sessionData {
 	data, err := rdb.Get(context.Background(), sessionKey(cookie.Value)).Bytes()
 	if err != nil {
 		if err != redis.Nil {
-			log.Printf("读取会话失败: %v", err)
+			slog.Error("读取会话失败", "error", err)
 		}
 		return nil
 	}
 
 	var sess sessionData
 	if err := json.Unmarshal(data, &sess); err != nil {
-		log.Printf("解析会话失败: %v", err)
+		slog.Error("解析会话失败", "error", err)
 		return nil
 	}
 
@@ -111,7 +111,7 @@ func getSession(r *http.Request) *sessionData {
 
 func deleteSession(token string) {
 	if err := rdb.Del(context.Background(), sessionKey(token)).Err(); err != nil && err != redis.Nil {
-		log.Printf("删除会话失败: %v", err)
+		slog.Error("删除会话失败", "error", err)
 	}
 }
 
@@ -183,7 +183,7 @@ func ValidateCSRFToken(r *http.Request) bool {
 
 	owner, err := rdb.Get(context.Background(), "csrf:"+token).Result()
 	if err != nil && err != redis.Nil {
-		log.Printf("校验 CSRF 失败: %v", err)
+		slog.Error("校验 CSRF 失败", "error", err)
 	}
 	return err == nil && owner == csrfOwner(r)
 }

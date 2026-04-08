@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -28,10 +28,10 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func(tenantID int64) {
-		log.Printf("Manual sync triggered via API for tenant %d", tenantID)
+		slog.Info("manual sync triggered", "tenant_id", tenantID)
 		defer db.FinishTenantSync(tenantID)
 		if err := db.SyncFromClawHub(tenantID); err != nil {
-			log.Printf("Sync failed: %v", err)
+			slog.Error("Sync failed", "error", err)
 		}
 	}(sess.CurrentTenantID)
 

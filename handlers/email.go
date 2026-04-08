@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"os"
@@ -139,7 +139,7 @@ func recordRateLimit(email, ip string) error {
 func sendVerificationEmail(toEmail, code string) error {
 	apiKey := os.Getenv("RESEND_API_KEY")
 	if apiKey == "" {
-		log.Printf("RESEND_API_KEY 未配置，验证码 %s -> %s", code, toEmail)
+		slog.Warn("RESEND_API_KEY not set, code logged", "code", code, "email", toEmail)
 		return nil
 	}
 
@@ -292,7 +292,7 @@ func verifyCode(r *http.Request, email, code, purpose string) (bool, string) {
 	attemptKey := rateLimitKey("ratelimit:verify-code:", normalizeEmail(email), purpose, GetClientIP(r))
 	locked, remaining, err := failureLockState(attemptKey, maxVerificationFailures)
 	if err != nil {
-		log.Printf("检查验证码失败限制失败: %v", err)
+		slog.Error("检查验证码失败限制失败", "error", err)
 		return false, "系统繁忙，请稍后重试"
 	}
 	if locked {
@@ -301,17 +301,17 @@ func verifyCode(r *http.Request, email, code, purpose string) (bool, string) {
 
 	result, err := verifyCodeScript.Run(context.Background(), rdb, []string{emailCodeKey(email, purpose)}, strings.TrimSpace(code)).Int()
 	if err != nil {
-		log.Printf("校验验证码失败: %v", err)
+		slog.Error("校验验证码失败", "error", err)
 		return false, "系统繁忙，请稍后重试"
 	}
 	if result != 1 {
 		if rateErr := recordFailure(attemptKey, verificationLockTTL); rateErr != nil {
-			log.Printf("记录验证码失败次数失败: %v", rateErr)
+			slog.Error("记录验证码失败次数失败", "error", rateErr)
 		}
 		return false, "验证码错误或已过期"
 	}
 	if err := clearFailures(attemptKey); err != nil {
-		log.Printf("清理验证码失败次数失败: %v", err)
+		slog.Error("清理验证码失败次数失败", "error", err)
 	}
 	return true, ""
 }

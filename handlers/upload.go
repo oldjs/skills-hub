@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -81,7 +81,7 @@ func UploadPreviewHandler(w http.ResponseWriter, r *http.Request) {
 	contentHTML := ""
 	rendered, err := security.RenderSkillMarkdown(skillMD)
 	if err != nil {
-		log.Printf("upload preview markdown render failed: %v", err)
+		slog.Error("upload preview markdown render failed", "error", err)
 	} else {
 		contentHTML = string(rendered)
 	}
@@ -166,7 +166,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err = persistUploadedSkillArchive(sess.CurrentTenantID, sess.UserID, buf)
 	if err != nil {
-		log.Printf("save uploaded skill failed: %v", err)
+		slog.Error("save uploaded skill failed", "error", err)
 		if strings.Contains(err.Error(), "已存在") {
 			renderUploadError(w, r, err.Error())
 			return
@@ -208,12 +208,12 @@ func persistUploadedSkillArchive(tenantID, userID int64, buf []byte) (*models.Sk
 	slug := generateSlug(meta.Name)
 	uploadDir := fmt.Sprintf("./uploads/%d", tenantID)
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		log.Printf("创建上传目录失败: %v", err)
+		slog.Error("创建上传目录失败", "error", err)
 		return nil, fmt.Errorf("保存文件失败")
 	}
 	zipPath := filepath.Join(uploadDir, slug+".zip")
 	if err := os.WriteFile(zipPath, buf, 0644); err != nil {
-		log.Printf("保存 ZIP 失败: %v", err)
+		slog.Error("保存 ZIP 失败", "error", err)
 		return nil, fmt.Errorf("保存文件失败")
 	}
 

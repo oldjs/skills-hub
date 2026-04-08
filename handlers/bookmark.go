@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -39,7 +39,7 @@ func BookmarkToggleHandler(w http.ResponseWriter, r *http.Request) {
 
 	bookmarked, err := db.ToggleBookmark(sess.UserID, skillID, sess.CurrentTenantID)
 	if err != nil {
-		log.Printf("bookmark toggle failed: %v", err)
+		slog.Error("bookmark toggle failed", "error", err)
 		http.Error(w, "操作失败", http.StatusInternalServerError)
 		return
 	}
@@ -60,7 +60,7 @@ func AccountBookmarksHandler(w http.ResponseWriter, r *http.Request) {
 
 	bookmarks, err := db.GetUserBookmarks(sess.UserID, sess.CurrentTenantID, 50)
 	if err != nil {
-		log.Printf("bookmarks load failed: %v", err)
+		slog.Error("bookmarks load failed", "error", err)
 		bookmarks = nil
 	}
 

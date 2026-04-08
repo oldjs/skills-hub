@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 
 	"skills-hub/db"
 )
@@ -38,7 +38,7 @@ func notifySkillReviewResult(skillID int64, status, reviewNote string) {
 	for _, m := range members {
 		if m.Role == "owner" || m.Role == "admin" {
 			if err := db.CreateNotification(m.UserID, nType, title, content, link); err != nil {
-				log.Printf("notify skill review failed for user %d: %v", m.UserID, err)
+				slog.Error("notify skill review failed", "user_id", m.UserID, "error", err)
 			}
 		}
 	}
@@ -78,6 +78,6 @@ func notifyCommentReply(tenantID, skillID int64, parentID *int64, replierUserID 
 	title := fmt.Sprintf("%s 回复了你在「%s」的评论", replierName, skillName)
 	link := "/skill?slug=" + skillSlug
 	if err := db.CreateNotification(parentUserID, "comment_reply", title, "", link); err != nil {
-		log.Printf("notify comment reply failed: %v", err)
+		slog.Error("notify comment reply failed", "error", err)
 	}
 }

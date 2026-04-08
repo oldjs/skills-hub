@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -73,7 +73,7 @@ func APIV1SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	skills, err := db.SearchSkillsForAPI(query, category, sortBy, tenantID)
 	if err != nil {
-		log.Printf("api search failed: %v", err)
+		slog.Error("api search failed", "error", err)
 		writeAPIError(w, http.StatusInternalServerError, "搜索失败")
 		return
 	}
@@ -130,7 +130,7 @@ func APIV1SkillDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 	skill, err := db.GetSkillBySlugForAPI(slug, tenantID)
 	if err != nil {
-		log.Printf("api skill detail failed: %v", err)
+		slog.Error("api skill detail failed", "error", err)
 		writeAPIError(w, http.StatusInternalServerError, "读取 skill 失败")
 		return
 	}
@@ -141,7 +141,7 @@ func APIV1SkillDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 	readme, err := security.RenderSkillMarkdown(skillMarkdownSource(*skill))
 	if err != nil {
-		log.Printf("api skill render failed: %v", err)
+		slog.Error("api skill render failed", "error", err)
 		writeAPIError(w, http.StatusInternalServerError, "渲染 skill 失败")
 		return
 	}
@@ -181,7 +181,7 @@ func APIV1DownloadHandler(w http.ResponseWriter, r *http.Request) {
 
 	skill, err := db.GetSkillByIDForAPI(skillID, authCtx.User.ID)
 	if err != nil {
-		log.Printf("api download failed: %v", err)
+		slog.Error("api download failed", "error", err)
 		writeAPIError(w, http.StatusInternalServerError, "读取 skill 失败")
 		return
 	}
@@ -195,12 +195,12 @@ func APIV1DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		zipPath := filepath.Join("./uploads", fmt.Sprintf("%d", skill.TenantID), skill.Slug+".zip")
 		data, err := os.ReadFile(zipPath)
 		if err != nil {
-			log.Printf("read uploaded zip failed: %v", err)
+			slog.Error("read uploaded zip failed", "error", err)
 			writeAPIError(w, http.StatusNotFound, "原始 zip 不存在")
 			return
 		}
 		if err := db.IncrementSkillDownloadCount(skill.ID); err != nil {
-			log.Printf("increment download count failed: %v", err)
+			slog.Error("increment download count failed", "error", err)
 		}
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileName))
@@ -210,12 +210,12 @@ func APIV1DownloadHandler(w http.ResponseWriter, r *http.Request) {
 
 	buf, err := buildSkillZIP(*skill)
 	if err != nil {
-		log.Printf("build sync zip failed: %v", err)
+		slog.Error("build sync zip failed", "error", err)
 		writeAPIError(w, http.StatusInternalServerError, "打包 zip 失败")
 		return
 	}
 	if err := db.IncrementSkillDownloadCount(skill.ID); err != nil {
-		log.Printf("increment download count failed: %v", err)
+		slog.Error("increment download count failed", "error", err)
 	}
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileName))
@@ -291,7 +291,7 @@ func APIV1CategoriesHandler(w http.ResponseWriter, r *http.Request) {
 
 	counts, err := db.ListCategoryCountsForAPI(tenantID)
 	if err != nil {
-		log.Printf("api categories failed: %v", err)
+		slog.Error("api categories failed", "error", err)
 		writeAPIError(w, http.StatusInternalServerError, "读取分类失败")
 		return
 	}
@@ -316,7 +316,7 @@ func APIV1StatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	stats, err := db.GetPlatformStatsForAPI()
 	if err != nil {
-		log.Printf("api stats failed: %v", err)
+		slog.Error("api stats failed", "error", err)
 		writeAPIError(w, http.StatusInternalServerError, "读取统计失败")
 		return
 	}

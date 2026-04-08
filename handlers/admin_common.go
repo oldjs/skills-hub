@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"skills-hub/db"
@@ -10,7 +10,7 @@ import (
 func renderAdminPage(w http.ResponseWriter, r *http.Request, name string, data PageData) {
 	stats, err := db.GetAdminDashboardStats()
 	if err != nil {
-		log.Printf("admin dashboard stats load failed: %v", err)
+		slog.Error("admin dashboard stats load failed", "error", err)
 		http.Error(w, "后台数据加载失败", http.StatusInternalServerError)
 		return
 	}
@@ -33,6 +33,6 @@ func recordAdminAction(r *http.Request, action, targetType string, targetID int6
 		return
 	}
 	if err := db.LogAdminAction(userID, action, targetType, targetID, details); err != nil {
-		log.Printf("admin action log failed: %v", err)
+		slog.Error("admin action log failed", "error", err)
 	}
 }

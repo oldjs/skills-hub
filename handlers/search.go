@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -62,7 +62,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		skills, totalSkills, currentPage, err := db.GetFilteredSkillsPageAdvanced(tenantID, searchParams, sortBy, page, perPage)
 		if err != nil {
-			log.Printf("search json failed: %v", err)
+			slog.Error("search json failed", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"skills": []models.Skill{}, "total": 0, "error": "搜索失败",
@@ -80,7 +80,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	skills, totalSkills, currentPage, err := db.GetFilteredSkillsPageAdvanced(tenantID, searchParams, sortBy, page, perPage)
 
 	if err != nil {
-		log.Printf("search page failed: %v", err)
+		slog.Error("search page failed", "error", err)
 		skills = []models.Skill{}
 		totalSkills = 0
 		currentPage = 1
@@ -89,7 +89,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	categories, err := db.GetCategories(tenantID)
 	if err != nil {
-		log.Printf("search categories failed: %v", err)
+		slog.Error("search categories failed", "error", err)
 		categories = []string{}
 		if pageError == "" {
 			pageError = "筛选分类加载失败，请稍后刷新重试"

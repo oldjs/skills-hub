@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -38,13 +38,13 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	case "comments":
 		comments, err = db.GetUserComments(userID, 20)
 		if err != nil {
-			log.Printf("profile comments load failed: %v", err)
+			slog.Error("profile comments load failed", "error", err)
 		}
 	default:
 		tab = "ratings"
 		ratings, err = db.GetUserRatings(userID, 20)
 		if err != nil {
-			log.Printf("profile ratings load failed: %v", err)
+			slog.Error("profile ratings load failed", "error", err)
 		}
 	}
 
@@ -101,7 +101,7 @@ func AccountProfileUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := db.UpdateUserProfile(sess.UserID, displayName, bio); err != nil {
-		log.Printf("update profile failed: %v", err)
+		slog.Error("update profile failed", "error", err)
 		http.Redirect(w, r, "/account?error=保存失败", http.StatusSeeOther)
 		return
 	}
