@@ -133,6 +133,9 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/tenant/member/update", handlers.RequirePlatformAdmin(handlers.AdminTenantMemberUpdateHandler))
 	mux.HandleFunc("/admin/tenant/member/remove", handlers.RequirePlatformAdmin(handlers.AdminTenantMemberRemoveHandler))
 	mux.HandleFunc("/admin/tenant/sync", handlers.RequirePlatformAdmin(handlers.AdminTenantSyncHandler))
+	mux.HandleFunc("/admin/oauth-clients", handlers.RequirePlatformAdmin(handlers.AdminOAuthClientsHandler))
+	mux.HandleFunc("/admin/oauth-clients/create", handlers.RequirePlatformAdmin(handlers.AdminOAuthClientCreateHandler))
+	mux.HandleFunc("/admin/oauth-clients/delete", handlers.RequirePlatformAdmin(handlers.AdminOAuthClientDeleteHandler))
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 }
