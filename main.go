@@ -35,10 +35,6 @@ func main() {
 
 	handlers.InitTemplates("./templates")
 
-	if err := handlers.InitOIDCKeys("./data/oidc_rsa.key"); err != nil {
-		log.Fatalf("Failed to initialize OIDC keys: %v", err)
-	}
-
 	go startAutoSync(6 * time.Hour)
 
 	if len(os.Args) > 1 && os.Args[1] == "--sync" {
@@ -81,16 +77,6 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/register", handlers.UserRegister)
 	mux.HandleFunc("/logout", handlers.UserLogout)
 	mux.HandleFunc("/captcha", handlers.CaptchaHandler)
-	mux.HandleFunc("/auth/github", handlers.OAuthGitHubHandler)
-	mux.HandleFunc("/auth/google", handlers.OAuthGoogleHandler)
-	mux.HandleFunc("/auth/callback/github", handlers.OAuthCallbackGitHubHandler)
-	mux.HandleFunc("/auth/callback/google", handlers.OAuthCallbackGoogleHandler)
-	// OIDC Provider 端点
-	mux.HandleFunc("/.well-known/openid-configuration", handlers.OIDCDiscoveryHandler)
-	mux.HandleFunc("/oauth/jwks", handlers.OIDCJWKSHandler)
-	mux.HandleFunc("/oauth/authorize", handlers.OIDCAuthorizeHandler)
-	mux.HandleFunc("/oauth/token", handlers.OIDCTokenHandler)
-	mux.HandleFunc("/oauth/userinfo", handlers.OIDCUserInfoHandler)
 	mux.HandleFunc("/send-code", handlers.SendCodeHandler)
 	mux.HandleFunc("/switch-tenant", handlers.RequireAuth(handlers.SwitchTenant))
 	mux.HandleFunc("/account", handlers.RequireAuth(handlers.AccountHandler))
@@ -133,9 +119,6 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/tenant/member/update", handlers.RequirePlatformAdmin(handlers.AdminTenantMemberUpdateHandler))
 	mux.HandleFunc("/admin/tenant/member/remove", handlers.RequirePlatformAdmin(handlers.AdminTenantMemberRemoveHandler))
 	mux.HandleFunc("/admin/tenant/sync", handlers.RequirePlatformAdmin(handlers.AdminTenantSyncHandler))
-	mux.HandleFunc("/admin/oauth-clients", handlers.RequirePlatformAdmin(handlers.AdminOAuthClientsHandler))
-	mux.HandleFunc("/admin/oauth-clients/create", handlers.RequirePlatformAdmin(handlers.AdminOAuthClientCreateHandler))
-	mux.HandleFunc("/admin/oauth-clients/delete", handlers.RequirePlatformAdmin(handlers.AdminOAuthClientDeleteHandler))
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 }

@@ -30,11 +30,6 @@
                         <span><i class="fas fa-building mr-2"></i>租户管理</span>
                     </a>
                     {{end}}
-                    {{if .IsPlatformAdmin}}
-                    <a href="/admin/oauth-clients" class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition {{if eq .AdminSection "oauth_clients"}}bg-orange-500 text-white shadow-lg shadow-orange-500/20{{else}}text-slate-600 hover:bg-slate-100 hover:text-slate-900{{end}}">
-                        <span><i class="fas fa-key mr-2"></i>OIDC 客户端</span>
-                    </a>
-                    {{end}}
                 </nav>
 
                 <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">

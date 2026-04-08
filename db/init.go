@@ -63,10 +63,6 @@ func Init(dbPath string) error {
 			return
 		}
 
-		if err = migrateCreateOAuthTables(); err != nil {
-			return
-		}
-
 		if err = createIndexes(); err != nil {
 			return
 		}
@@ -259,9 +255,6 @@ func createIndexes() error {
 		`CREATE INDEX IF NOT EXISTS idx_skill_comments_user_id ON skill_comments(user_id, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_skill_ratings_user_created ON skill_ratings(user_id, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_skill_comments_parent ON skill_comments(parent_id)`,
-		// OAuth
-		`CREATE INDEX IF NOT EXISTS idx_oauth_connections_user ON oauth_connections(user_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_oauth_connections_email ON oauth_connections(email)`,
 	}
 
 	for _, statement := range statements {
@@ -511,41 +504,6 @@ func migrateAddSubAdminColumn() error {
 
 	if _, err := database.Exec(`ALTER TABLE users ADD COLUMN is_sub_admin INTEGER NOT NULL DEFAULT 0`); err != nil {
 		log.Printf("添加 is_sub_admin 列失败（可能已存在）: %v", err)
-	}
-	return nil
-}
-
-// 创建 OAuth/OIDC 相关表
-func migrateCreateOAuthTables() error {
-	tables := []string{
-		// 第三方 OAuth 登录关联
-		`CREATE TABLE IF NOT EXISTS oauth_connections (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			user_id INTEGER NOT NULL,
-			provider TEXT NOT NULL,
-			provider_user_id TEXT NOT NULL,
-			email TEXT NOT NULL,
-			display_name TEXT NOT NULL DEFAULT '',
-			access_token TEXT NOT NULL DEFAULT '',
-			refresh_token TEXT NOT NULL DEFAULT '',
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			UNIQUE(provider, provider_user_id),
-			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-		)`,
-		// OIDC Provider 客户端应用
-		`CREATE TABLE IF NOT EXISTS oauth_clients (
-			id TEXT PRIMARY KEY,
-			secret_hash TEXT NOT NULL,
-			name TEXT NOT NULL,
-			redirect_uris TEXT NOT NULL DEFAULT '[]',
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)`,
-	}
-	for _, stmt := range tables {
-		if _, err := database.Exec(stmt); err != nil {
-			return err
-		}
 	}
 	return nil
 }
