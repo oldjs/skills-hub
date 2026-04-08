@@ -12,7 +12,6 @@ import (
 	"skills-hub/security"
 )
 
-
 // POST 提交评论
 func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

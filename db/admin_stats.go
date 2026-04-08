@@ -78,7 +78,10 @@ func GetMostActiveUsers(days, limit int) ([]ActiveUser, error) {
 }
 
 // 补齐没有数据的日期（填 0）
-func fillDateGaps(days int, rows interface{ Next() bool; Scan(...interface{}) error }) []DailyCount {
+func fillDateGaps(days int, rows interface {
+	Next() bool
+	Scan(...interface{}) error
+}) []DailyCount {
 	// 先收集有数据的日期
 	data := make(map[string]int)
 	for rows.Next() {

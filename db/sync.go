@@ -387,7 +387,7 @@ type AdvancedSearchParams struct {
 	MinRating float64 // 最低用户评分
 	DateRange string  // "7d", "30d", "90d", ""
 	Author    string
-	Source    string  // "clawhub", "upload", ""
+	Source    string // "clawhub", "upload", ""
 }
 
 func buildFilteredSkillsWhereClause(tenantID int64, query, category string) (string, []interface{}) {

@@ -35,17 +35,17 @@ type SkillRating struct {
 
 // 用户评论
 type SkillComment struct {
-	ID          int64         `json:"id"`
-	TenantID    int64         `json:"tenantId"`
-	SkillID     int64         `json:"skillId"`
-	UserID      int64         `json:"userId"`
-	Content     string        `json:"content"`
-	ContentHTML template.HTML `json:"-"`
-	ParentID    *int64        `json:"parentId,omitempty"`  // 父评论 ID，NULL 表示顶层评论
-	CreatedAt   time.Time     `json:"createdAt"`
-	Email       string        `json:"email"`               // join 查出来的
-	DisplayName string        `json:"displayName"`         // join 查出来的
-	Replies     []SkillComment `json:"-"`                  // 子评论列表（模板里用）
+	ID          int64          `json:"id"`
+	TenantID    int64          `json:"tenantId"`
+	SkillID     int64          `json:"skillId"`
+	UserID      int64          `json:"userId"`
+	Content     string         `json:"content"`
+	ContentHTML template.HTML  `json:"-"`
+	ParentID    *int64         `json:"parentId,omitempty"` // 父评论 ID，NULL 表示顶层评论
+	CreatedAt   time.Time      `json:"createdAt"`
+	Email       string         `json:"email"`       // join 查出来的
+	DisplayName string         `json:"displayName"` // join 查出来的
+	Replies     []SkillComment `json:"-"`           // 子评论列表（模板里用）
 }
 
 type SearchResult struct {

@@ -136,7 +136,7 @@ func clearSessionCookie(w http.ResponseWriter) {
 }
 
 // 对外暴露的 session 查询
-func IsLoggedIn(r *http.Request) bool   { return getSession(r) != nil }
+func IsLoggedIn(r *http.Request) bool                { return getSession(r) != nil }
 func GetCurrentSession(r *http.Request) *sessionData { return getSession(r) }
 
 func IsPlatformAdmin(r *http.Request) bool {

@@ -58,9 +58,9 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		MetaDescription: profileDesc,
 		CanonicalURL:    canonicalURL("/user?id=" + userIDStr),
 		CurrentPage:     "profile",
-		ProfileUser:    profile,
-		ProfileTab:     tab,
-		ProfileRatings: ratings,
+		ProfileUser:     profile,
+		ProfileTab:      tab,
+		ProfileRatings:  ratings,
 		ProfileComments: comments,
 	}
 

@@ -44,7 +44,8 @@ func InitTemplates(templateDir string) {
 		}
 		t, err := template.New("layout.html").Funcs(funcMap).ParseFiles(files...)
 		if err != nil {
-			slog.Error("template parse failed", "page", page, "error", err); os.Exit(1)
+			slog.Error("template parse failed", "page", page, "error", err)
+			os.Exit(1)
 		}
 		templates[page] = t
 	}
