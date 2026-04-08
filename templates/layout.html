@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 预连接外部资源，减少 DNS/TLS 开销 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <!-- 立即应用主题，防止页面闪烁 -->
     <script>(function(){var t=localStorage.getItem('skills-hub-theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')})()</script>
     <title>{{template "title" .}}</title>
@@ -24,8 +28,8 @@
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         :root { color-scheme: light; }
         html.dark { color-scheme: dark; }
         body { font-family: 'Inter', sans-serif; }
@@ -148,7 +152,7 @@
     {{template "jsonld" .}}
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-900 antialiased">
-    <nav class="surface-panel sticky top-0 z-50 border-b border-white/70">
+    <nav class="surface-panel sticky top-0 z-50 border-b border-white/70" aria-label="主导航">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="flex h-16 items-center justify-between gap-4">
                 <a href="/" class="flex items-center gap-3">
@@ -260,7 +264,7 @@
         {{template "content" .}}
     </main>
 
-    <footer class="border-t border-gray-100 bg-white/90">
+    <footer class="border-t border-gray-100 bg-white/90" role="contentinfo">
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <div class="flex flex-col items-center justify-between gap-4 text-sm text-slate-400 md:flex-row">
                 <div class="flex items-center gap-2">
