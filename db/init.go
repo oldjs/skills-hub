@@ -71,6 +71,14 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateCreateCollectionsTable(); err != nil {
+			return
+		}
+
+		if err = migrateCreateCommentVotesTable(); err != nil {
+			return
+		}
+
 		if err = migrateCreateBookmarksTable(); err != nil {
 			return
 		}
@@ -556,6 +564,54 @@ func migrateCreateNotificationsTable() error {
 			link TEXT NOT NULL DEFAULT '',
 			is_read INTEGER NOT NULL DEFAULT 0,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)
+	`)
+	return err
+}
+
+// 技能合集
+func migrateCreateCollectionsTable() error {
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS skill_collections (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			name TEXT NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			is_public INTEGER NOT NULL DEFAULT 1,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS collection_items (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			collection_id INTEGER NOT NULL,
+			skill_id INTEGER NOT NULL,
+			added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(collection_id, skill_id),
+			FOREIGN KEY (collection_id) REFERENCES skill_collections(id) ON DELETE CASCADE,
+			FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+		)`,
+	}
+	for _, s := range stmts {
+		if _, err := database.Exec(s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// 评论投票
+func migrateCreateCommentVotesTable() error {
+	_, err := database.Exec(`
+		CREATE TABLE IF NOT EXISTS comment_votes (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			comment_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			vote INTEGER NOT NULL CHECK (vote IN (-1, 1)),
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(comment_id, user_id),
+			FOREIGN KEY (comment_id) REFERENCES skill_comments(id) ON DELETE CASCADE,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)
 	`)
