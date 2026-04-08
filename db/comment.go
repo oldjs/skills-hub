@@ -64,7 +64,6 @@ func GetSkillComments(tenantID, skillID int64, sortBy ...string) ([]models.Skill
 	orderClause := "c.created_at ASC"
 	switch sort {
 	case "oldest":
-		orderClause = "c.created_at ASC"
 	case "popular":
 		orderClause = "(SELECT COUNT(*) FROM comment_votes v WHERE v.comment_id = c.id AND v.vote = 1) DESC, c.created_at ASC"
 	default: // newest

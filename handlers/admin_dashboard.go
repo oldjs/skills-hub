@@ -79,7 +79,7 @@ func renderAdminPageWithExtra(w http.ResponseWriter, r *http.Request, name strin
 		data.AdminSection = "dashboard"
 	}
 	if data.AdminStats != nil {
-		data.AdminStats.PendingSkills = data.AdminStats.PendingSkills
+		// AdminStats already populated
 	}
 
 	// 把 PageData + extra 合并后传给 RenderTemplate
