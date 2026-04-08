@@ -50,8 +50,9 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 拉评论列表
-	comments, err := db.GetSkillComments(tenantID, skill.ID)
+	// 拉评论列表（支持排序参数）
+	commentSort := r.URL.Query().Get("comment_sort")
+	comments, err := db.GetSkillComments(tenantID, skill.ID, commentSort)
 	if err != nil {
 		slog.Error("skill comments load failed", "error", err)
 		comments = []models.SkillComment{}

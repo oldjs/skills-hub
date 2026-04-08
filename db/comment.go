@@ -53,14 +53,31 @@ func AddComment(tenantID, skillID, userID int64, content string, parentID *int64
 }
 
 // 拿某个 skill 的所有评论，组装成树形结构返回
-func GetSkillComments(tenantID, skillID int64) ([]models.SkillComment, error) {
+// sortBy: "newest"(默认), "oldest", "popular"
+func GetSkillComments(tenantID, skillID int64, sortBy ...string) ([]models.SkillComment, error) {
+	sort := "newest"
+	if len(sortBy) > 0 && sortBy[0] != "" {
+		sort = sortBy[0]
+	}
+
+	// popular 模式：按投票数排序
+	orderClause := "c.created_at ASC"
+	switch sort {
+	case "oldest":
+		orderClause = "c.created_at ASC"
+	case "popular":
+		orderClause = "(SELECT COUNT(*) FROM comment_votes v WHERE v.comment_id = c.id AND v.vote = 1) DESC, c.created_at ASC"
+	default: // newest
+		orderClause = "c.created_at DESC"
+	}
+
 	rows, err := GetDB().Query(`
 		SELECT c.id, c.tenant_id, c.skill_id, c.user_id, c.content, c.parent_id, c.created_at,
 		       u.email, u.display_name
 		FROM skill_comments c
 		JOIN users u ON u.id = c.user_id
 		WHERE c.tenant_id = ? AND c.skill_id = ?
-		ORDER BY c.created_at ASC
+		ORDER BY `+orderClause+`
 	`, tenantID, skillID)
 	if err != nil {
 		return nil, err
@@ -97,10 +114,9 @@ func GetSkillComments(tenantID, skillID int64) ([]models.SkillComment, error) {
 		}
 	}
 
-	// 倒序展示顶层评论（最新的在前），子评论保持正序
-	for i, j := 0, len(topLevel)-1; i < j; i, j = i+1, j-1 {
-		topLevel[i], topLevel[j] = topLevel[j], topLevel[i]
-	}
+	// popular 和 newest 模式下 SQL 已经按正确顺序返回了
+	// oldest 模式不需要额外排序
+	// 注意：之前硬编码倒序是因为 SQL 是 ASC，现在 SQL 已按 sort 排序
 
 	// 把子评论挂到对应顶层评论下
 	for i := range topLevel {
