@@ -380,15 +380,29 @@ func buildFilteredSkillsCountQuery(tenantID int64, query, category string) (stri
 	return statement + whereClause, args
 }
 
+// 高级搜索参数
+type AdvancedSearchParams struct {
+	Query     string
+	Category  string
+	MinRating float64 // 最低用户评分
+	DateRange string  // "7d", "30d", "90d", ""
+	Author    string
+	Source    string  // "clawhub", "upload", ""
+}
+
 func buildFilteredSkillsWhereClause(tenantID int64, query, category string) (string, []interface{}) {
+	return buildAdvancedWhereClause(tenantID, AdvancedSearchParams{Query: query, Category: category})
+}
+
+func buildAdvancedWhereClause(tenantID int64, params AdvancedSearchParams) (string, []interface{}) {
 	statement := `
 		WHERE s.tenant_id = ? AND (s.source != 'upload' OR s.review_status = 'approved')
 	`
 	args := []interface{}{tenantID}
 
-	if query != "" {
-		// 优先走 FTS5 全文搜索（按相关度排序的 ID 列表）
-		ftsIDs := SearchSkillIDsByFTS(query)
+	// 全文搜索
+	if params.Query != "" {
+		ftsIDs := SearchSkillIDsByFTS(params.Query)
 		if ftsIDs != nil && len(ftsIDs) > 0 {
 			placeholders := make([]string, len(ftsIDs))
 			for i, id := range ftsIDs {
@@ -397,18 +411,95 @@ func buildFilteredSkillsWhereClause(tenantID int64, query, category string) (str
 			}
 			statement += ` AND s.id IN (` + strings.Join(placeholders, ",") + `)`
 		} else {
-			// FTS 不可用或无结果，回退 LIKE
-			pattern := "%" + query + "%"
+			pattern := "%" + params.Query + "%"
 			statement += ` AND (s.display_name LIKE ? OR s.summary LIKE ? OR s.categories LIKE ?)`
 			args = append(args, pattern, pattern, pattern)
 		}
 	}
-	if category != "" {
+
+	// 分类筛选
+	if params.Category != "" {
 		statement += ` AND s.categories LIKE ?`
-		args = append(args, "%"+category+"%")
+		args = append(args, "%"+params.Category+"%")
+	}
+
+	// 来源筛选
+	if params.Source == "clawhub" {
+		statement += ` AND s.source != 'upload'`
+	} else if params.Source == "upload" {
+		statement += ` AND s.source = 'upload'`
+	}
+
+	// 作者筛选
+	if params.Author != "" {
+		statement += ` AND s.author LIKE ?`
+		args = append(args, "%"+params.Author+"%")
+	}
+
+	// 日期范围
+	switch params.DateRange {
+	case "7d":
+		statement += ` AND s.created_at >= datetime('now', '-7 days')`
+	case "30d":
+		statement += ` AND s.created_at >= datetime('now', '-30 days')`
+	case "90d":
+		statement += ` AND s.created_at >= datetime('now', '-90 days')`
 	}
 
 	return statement, args
+}
+
+// 带高级参数的分页搜索
+func GetFilteredSkillsPageAdvanced(tenantID int64, params AdvancedSearchParams, sortBy string, page, perPage int) ([]models.Skill, int, int, error) {
+	countStatement := `SELECT COUNT(*) FROM skills s`
+	whereClause, args := buildAdvancedWhereClause(tenantID, params)
+	total, err := countSkills(countStatement+whereClause, args...)
+	if err != nil {
+		return nil, 0, 1, err
+	}
+
+	if page <= 0 {
+		page = 1
+	}
+	if perPage <= 0 {
+		perPage = 12
+	}
+	if total == 0 {
+		return []models.Skill{}, 0, 1, nil
+	}
+
+	totalPages := (total + perPage - 1) / perPage
+	if page > totalPages {
+		page = totalPages
+	}
+
+	offset := (page - 1) * perPage
+	baseQuery := `
+		SELECT s.id, s.tenant_id, s.slug, s.display_name, s.summary, s.content, s.score,
+		       s.source_updated_at, s.version, s.categories, s.source,
+		       COALESCE(AVG(r.score), 0) as avg_rating, COUNT(r.id) as rating_count
+		FROM skills s
+		LEFT JOIN skill_ratings r ON r.skill_id = s.id AND r.tenant_id = s.tenant_id
+	`
+	whereClause2, args2 := buildAdvancedWhereClause(tenantID, params)
+	statement := baseQuery + whereClause2 + ` GROUP BY s.id`
+
+	// 最低评分筛选放在 HAVING（因为 avg_rating 是聚合结果）
+	if params.MinRating > 0 {
+		statement += ` HAVING avg_rating >= ?`
+		args2 = append(args2, params.MinRating)
+	}
+
+	statement += skillOrderClause(sortBy)
+	statement += ` LIMIT ? OFFSET ?`
+	args2 = append(args2, perPage, offset)
+
+	skills, err := querySkillsWithRating(statement, args2...)
+	if err != nil {
+		return nil, 0, 1, err
+	}
+
+	return skills, total, page, nil
 }
 
 func skillOrderClause(sortBy string) string {

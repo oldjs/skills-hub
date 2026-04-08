@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"skills-hub/db"
@@ -22,8 +23,30 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query().Get("q")
 	category := r.URL.Query().Get("category")
-	sortBy := r.URL.Query().Get("sort") // score, rating, latest
+	sortBy := r.URL.Query().Get("sort")
+	author := strings.TrimSpace(r.URL.Query().Get("author"))
+	source := strings.TrimSpace(r.URL.Query().Get("source"))
+	dateRange := strings.TrimSpace(r.URL.Query().Get("date"))
+	minRatingStr := strings.TrimSpace(r.URL.Query().Get("min_rating"))
 	page, perPage := parsePaginationParams(r)
+
+	// 解析最低评分
+	var minRating float64
+	if minRatingStr != "" {
+		if v, err := strconv.ParseFloat(minRatingStr, 64); err == nil && v > 0 {
+			minRating = v
+		}
+	}
+
+	searchParams := db.AdvancedSearchParams{
+		Query:     query,
+		Category:  category,
+		MinRating: minRating,
+		DateRange: dateRange,
+		Author:    author,
+		Source:    source,
+	}
+
 	title := "搜索 Skills - Skills Hub"
 	if query != "" && category != "" {
 		title = "搜索: " + query + " / " + category + " - Skills Hub"
@@ -35,39 +58,24 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	if strings.Contains(r.Header.Get("Accept"), "application/json") || r.URL.Query().Get("format") == "json" {
 		w.Header().Set("Content-Type", "application/json")
-
-		skills, totalSkills, currentPage, err := db.GetFilteredSkillsPage(sess.CurrentTenantID, query, category, sortBy, page, perPage)
-
+		skills, totalSkills, currentPage, err := db.GetFilteredSkillsPageAdvanced(sess.CurrentTenantID, searchParams, sortBy, page, perPage)
 		if err != nil {
 			log.Printf("search json failed: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"skills":   []models.Skill{},
-				"query":    query,
-				"category": category,
-				"sort":     sortBy,
-				"page":     1,
-				"per_page": perPage,
-				"total":    0,
-				"error":    "搜索失败，请稍后重试",
+				"skills": []models.Skill{}, "total": 0, "error": "搜索失败",
 			})
 			return
 		}
-
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"skills":   skills,
-			"query":    query,
-			"category": category,
-			"sort":     sortBy,
-			"page":     currentPage,
-			"per_page": perPage,
-			"total":    totalSkills,
+			"skills": skills, "query": query, "category": category,
+			"sort": sortBy, "page": currentPage, "per_page": perPage, "total": totalSkills,
 		})
 		return
 	}
 
 	pageError := ""
-	skills, totalSkills, currentPage, err := db.GetFilteredSkillsPage(sess.CurrentTenantID, query, category, sortBy, page, perPage)
+	skills, totalSkills, currentPage, err := db.GetFilteredSkillsPageAdvanced(sess.CurrentTenantID, searchParams, sortBy, page, perPage)
 
 	if err != nil {
 		log.Printf("search page failed: %v", err)
@@ -101,6 +109,10 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		Query:           query,
 		Category:        category,
 		SortBy:          sortBy,
+		AuthorFilter:    author,
+		SourceFilter:    source,
+		DateFilter:      dateRange,
+		MinRating:       minRatingStr,
 		CurrentPage:     "search",
 		Pagination:      NewPaginationData(currentPage, perPage, totalSkills),
 		TotalSkills:     totalSkills,

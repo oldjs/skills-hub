@@ -122,6 +122,10 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	target["Query"] = data.Query
 	target["Category"] = data.Category
 	target["SortBy"] = data.SortBy
+	target["AuthorFilter"] = data.AuthorFilter
+	target["SourceFilter"] = data.SourceFilter
+	target["DateFilter"] = data.DateFilter
+	target["MinRating"] = data.MinRating
 	target["StatusFilter"] = data.StatusFilter
 	target["CurrentPage"] = data.CurrentPage
 	if data.Pagination != nil {
@@ -198,6 +202,10 @@ type PageData struct {
 	Query           string
 	Category        string
 	SortBy          string // 排序方式：score, rating, latest
+	AuthorFilter    string
+	SourceFilter    string // clawhub, upload, ""
+	DateFilter      string // 7d, 30d, 90d, ""
+	MinRating       string
 	Pagination      *PaginationData
 	StatusFilter    string
 	CurrentPage     string

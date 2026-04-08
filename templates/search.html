@@ -79,6 +79,47 @@
                     </a>
                 </div>
             </div>
+
+            <!-- 高级筛选 -->
+            <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">高级筛选</h3>
+                <form action="/search" method="GET" class="space-y-3">
+                    {{if .Query}}<input type="hidden" name="q" value="{{.Query}}">{{end}}
+                    {{if .Category}}<input type="hidden" name="category" value="{{.Category}}">{{end}}
+                    {{if .SortBy}}<input type="hidden" name="sort" value="{{.SortBy}}">{{end}}
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">来源</label>
+                        <select name="source" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                            <option value="">全部</option>
+                            <option value="clawhub" {{if eq .SourceFilter "clawhub"}}selected{{end}}>ClawHub</option>
+                            <option value="upload" {{if eq .SourceFilter "upload"}}selected{{end}}>用户上传</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">时间范围</label>
+                        <select name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                            <option value="">全部时间</option>
+                            <option value="7d" {{if eq .DateFilter "7d"}}selected{{end}}>最近 7 天</option>
+                            <option value="30d" {{if eq .DateFilter "30d"}}selected{{end}}>最近 30 天</option>
+                            <option value="90d" {{if eq .DateFilter "90d"}}selected{{end}}>最近 90 天</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">最低评分</label>
+                        <select name="min_rating" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                            <option value="">不限</option>
+                            <option value="3" {{if eq .MinRating "3"}}selected{{end}}>3 星以上</option>
+                            <option value="4" {{if eq .MinRating "4"}}selected{{end}}>4 星以上</option>
+                            <option value="4.5" {{if eq .MinRating "4.5"}}selected{{end}}>4.5 星以上</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">作者</label>
+                        <input type="text" name="author" value="{{.AuthorFilter}}" placeholder="按作者搜索" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm placeholder-slate-400 focus:border-orange-400 focus:bg-white focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 transition">应用筛选</button>
+                </form>
+            </div>
         </aside>
 
         <!-- Main Content -->
