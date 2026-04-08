@@ -126,6 +126,7 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/skill/review", handlers.RequireAdmin(handlers.AdminSkillReviewHandler))
 	mux.HandleFunc("/admin/skill/rollback", handlers.RequireAdmin(handlers.AdminSkillRollbackHandler))
 	mux.HandleFunc("/admin/skills/batch-review", handlers.RequireAdmin(handlers.AdminBatchReviewHandler))
+	mux.HandleFunc("/admin/logs/export", handlers.RequirePlatformAdmin(handlers.AdminLogsExportHandler))
 	mux.HandleFunc("/admin/comments", handlers.RequireAdmin(handlers.AdminCommentsHandler))
 	mux.HandleFunc("/admin/comment/delete", handlers.RequireAdmin(handlers.AdminCommentDeleteHandler))
 	mux.HandleFunc("/admin/users", handlers.RequirePlatformAdmin(handlers.AdminUsersHandler))
