@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"skills-hub/db"
 	"skills-hub/models"
 )
 
@@ -83,6 +84,8 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 		pageData["IsPlatformAdmin"] = ctx.User != nil && ctx.User.IsPlatformAdmin
 		pageData["IsSubAdmin"] = ctx.User != nil && ctx.User.IsSubAdmin
 		pageData["IsAdmin"] = ctx.User != nil && (ctx.User.IsPlatformAdmin || ctx.User.IsSubAdmin)
+		// 导航栏未读通知数
+		pageData["UnreadNotifications"] = db.CountUnreadNotifications(sess.UserID)
 	}
 
 	mergeTemplateData(pageData, data)

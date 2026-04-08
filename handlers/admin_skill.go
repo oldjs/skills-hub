@@ -120,5 +120,8 @@ func AdminSkillReviewHandler(w http.ResponseWriter, r *http.Request) {
 		message = "Skill 已拒绝"
 	}
 	recordAdminAction(r, action, "skill", skillID, strings.TrimSpace(r.FormValue("review_note")))
+
+	// 通知上传者审核结果
+	notifySkillReviewResult(skillID, status, strings.TrimSpace(r.FormValue("review_note")))
 	http.Redirect(w, r, "/admin/skill?id="+r.FormValue("skill_id")+"&info="+urlQueryEscape(message), http.StatusSeeOther)
 }

@@ -194,6 +194,15 @@
                         </select>
                     </form>
                     {{end}}
+                    <a href="/account/bookmarks" class="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-orange-200 hover:text-orange-500" title="我的收藏">
+                        <i class="far fa-bookmark text-sm"></i>
+                    </a>
+                    <a href="#" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-orange-200 hover:text-orange-500" title="通知" onclick="window.location='/account#notifications';return false;">
+                        <i class="far fa-bell text-sm"></i>
+                        {{if and .UnreadNotifications (gt .UnreadNotifications 0)}}
+                        <span class="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{{.UnreadNotifications}}</span>
+                        {{end}}
+                    </a>
                     <button type="button" class="theme-toggle-btn flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-orange-200 hover:text-orange-500" title="切换主题">
                         <i class="fas fa-sun dark-show"></i>
                         <i class="fas fa-moon dark-hide"></i>

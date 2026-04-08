@@ -78,6 +78,9 @@ func CommentSkillHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 回复通知
+	go notifyCommentReply(sess.CurrentTenantID, skillID, parentID, sess.UserID)
+
 	// 提交后跳回详情页
 	http.Redirect(w, r, "/skill?slug="+url.QueryEscape(slug), http.StatusSeeOther)
 }

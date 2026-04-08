@@ -63,6 +63,10 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateCreateNotificationsTable(); err != nil {
+			return
+		}
+
 		if err = migrateCreateBookmarksTable(); err != nil {
 			return
 		}
@@ -263,6 +267,7 @@ func createIndexes() error {
 		`CREATE INDEX IF NOT EXISTS idx_skill_ratings_user_created ON skill_ratings(user_id, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_skill_comments_parent ON skill_comments(parent_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_skill_bookmarks_user ON skill_bookmarks(user_id, tenant_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read, created_at DESC)`,
 	}
 
 	for _, statement := range statements {
@@ -514,6 +519,24 @@ func migrateAddSubAdminColumn() error {
 		log.Printf("添加 is_sub_admin 列失败（可能已存在）: %v", err)
 	}
 	return nil
+}
+
+// 通知表
+func migrateCreateNotificationsTable() error {
+	_, err := database.Exec(`
+		CREATE TABLE IF NOT EXISTS notifications (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			type TEXT NOT NULL,
+			title TEXT NOT NULL,
+			content TEXT NOT NULL DEFAULT '',
+			link TEXT NOT NULL DEFAULT '',
+			is_read INTEGER NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)
+	`)
+	return err
 }
 
 // 收藏表
