@@ -67,6 +67,9 @@ func Init(dbPath string) error {
 			return
 		}
 
+		// FTS5 全文搜索索引（失败不阻塞启动）
+		_ = initFTS()
+
 		log.Println("Database initialized successfully")
 	})
 	return err

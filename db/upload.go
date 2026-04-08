@@ -41,6 +41,9 @@ func SaveUploadedSkill(tenantID int64, slug, displayName, summary, content, vers
 		return nil, err
 	}
 
+	// 新 skill 写入 FTS 索引
+	SyncSkillToFTS(skillID)
+
 	return &models.Skill{
 		ID:          skillID,
 		TenantID:    tenantID,

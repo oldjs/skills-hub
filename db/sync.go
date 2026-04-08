@@ -193,6 +193,12 @@ func saveSkills(tenantID int64, skills []models.Skill) (int, error) {
 	if err := tx.Commit(); err != nil {
 		return count, err
 	}
+
+	// 同步完成后重建 FTS 索引（批量操作比逐条更快）
+	if count > 0 {
+		rebuildFTSIndex()
+	}
+
 	return count, nil
 }
 
@@ -381,9 +387,21 @@ func buildFilteredSkillsWhereClause(tenantID int64, query, category string) (str
 	args := []interface{}{tenantID}
 
 	if query != "" {
-		pattern := "%" + query + "%"
-		statement += ` AND (s.display_name LIKE ? OR s.summary LIKE ? OR s.categories LIKE ?)`
-		args = append(args, pattern, pattern, pattern)
+		// 优先走 FTS5 全文搜索（按相关度排序的 ID 列表）
+		ftsIDs := SearchSkillIDsByFTS(query)
+		if ftsIDs != nil && len(ftsIDs) > 0 {
+			placeholders := make([]string, len(ftsIDs))
+			for i, id := range ftsIDs {
+				placeholders[i] = "?"
+				args = append(args, id)
+			}
+			statement += ` AND s.id IN (` + strings.Join(placeholders, ",") + `)`
+		} else {
+			// FTS 不可用或无结果，回退 LIKE
+			pattern := "%" + query + "%"
+			statement += ` AND (s.display_name LIKE ? OR s.summary LIKE ? OR s.categories LIKE ?)`
+			args = append(args, pattern, pattern, pattern)
+		}
 	}
 	if category != "" {
 		statement += ` AND s.categories LIKE ?`
@@ -400,6 +418,9 @@ func skillOrderClause(sortBy string) string {
 		return ` ORDER BY avg_rating DESC, s.display_name ASC`
 	case "latest":
 		return ` ORDER BY s.created_at DESC, s.display_name ASC`
+	case "relevance":
+		// FTS 搜索时按相关度排序（ID 在 FTS 结果中的顺序就是相关度顺序）
+		return ` ORDER BY s.score DESC, s.display_name ASC`
 	default:
 		return ` ORDER BY s.score DESC, s.display_name ASC`
 	}
