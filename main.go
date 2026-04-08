@@ -35,6 +35,10 @@ func main() {
 
 	handlers.InitTemplates("./templates")
 
+	if err := handlers.InitOIDCKeys("./data/oidc_rsa.key"); err != nil {
+		log.Fatalf("Failed to initialize OIDC keys: %v", err)
+	}
+
 	go startAutoSync(6 * time.Hour)
 
 	if len(os.Args) > 1 && os.Args[1] == "--sync" {
@@ -81,6 +85,12 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/auth/google", handlers.OAuthGoogleHandler)
 	mux.HandleFunc("/auth/callback/github", handlers.OAuthCallbackGitHubHandler)
 	mux.HandleFunc("/auth/callback/google", handlers.OAuthCallbackGoogleHandler)
+	// OIDC Provider 端点
+	mux.HandleFunc("/.well-known/openid-configuration", handlers.OIDCDiscoveryHandler)
+	mux.HandleFunc("/oauth/jwks", handlers.OIDCJWKSHandler)
+	mux.HandleFunc("/oauth/authorize", handlers.OIDCAuthorizeHandler)
+	mux.HandleFunc("/oauth/token", handlers.OIDCTokenHandler)
+	mux.HandleFunc("/oauth/userinfo", handlers.OIDCUserInfoHandler)
 	mux.HandleFunc("/send-code", handlers.SendCodeHandler)
 	mux.HandleFunc("/switch-tenant", handlers.RequireAuth(handlers.SwitchTenant))
 	mux.HandleFunc("/account", handlers.RequireAuth(handlers.AccountHandler))
