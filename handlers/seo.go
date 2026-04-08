@@ -20,6 +20,12 @@ func canonicalURL(path string) string {
 }
 
 // 截断文本到指定长度，给 meta description 用
+// 检查本地静态资源是否存在（模板里用来决定加载本地还是 CDN）
+func localAssetExists(path string) bool {
+	_, err := os.Stat("./static/" + path)
+	return err == nil
+}
+
 func truncateText(text string, maxLen int) string {
 	runes := []rune(text)
 	if len(runes) <= maxLen {

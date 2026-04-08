@@ -25,10 +25,23 @@
     <meta name="twitter:title" content="{{template "title" .}}">
     {{if .MetaDescription}}<meta name="twitter:description" content="{{.MetaDescription}}">{{end}}
     {{if .OGImage}}<meta name="twitter:image" content="{{.OGImage}}">{{end}}
+    <!-- 样式：优先本地，回退 CDN -->
+    {{if localAsset "css/tailwind.css"}}
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+    {{else}}
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
+    {{end}}
+    {{if localAsset "css/fontawesome.min.css"}}
+    <link rel="stylesheet" href="/static/css/fontawesome.min.css">
+    {{else}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    {{end}}
+    {{if localAsset "css/inter.css"}}
+    <link rel="stylesheet" href="/static/css/inter.css">
+    {{else}}
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    {{end}}
     <style>
         :root { color-scheme: light; }
         html.dark { color-scheme: dark; }

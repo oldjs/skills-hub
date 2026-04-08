@@ -31,6 +31,7 @@ func InitTemplates(templateDir string) {
 		"parseInt":      parseIntFromStr,
 		"roundRating":   roundRating,
 		"add":           func(a, b int) int { return a + b },
+		"localAsset":    localAssetExists,
 	}
 	basePath := filepath.Join(templateDir, "layout.html")
 	adminShellPath := filepath.Join(templateDir, "admin_shell.html")
