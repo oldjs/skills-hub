@@ -28,6 +28,19 @@ This skill requires two environment variables:
 
 If `SKILLS_HUB_API_KEY` is not set, inform the user that they need to generate one from their Skills Hub account page (Account -> API Key Management).
 
+## Platform Selection
+
+This skill ships two scripts with identical functionality. **Pick the right one based on the user's OS:**
+
+| Platform | Script | Shell |
+|----------|--------|-------|
+| Linux / macOS | `skills-hub.sh` | Bash (requires curl, jq, unzip) |
+| Windows | `skills-hub.ps1` | PowerShell 5.1+ (no extra dependencies) |
+
+**How to detect:** Check if the current shell is PowerShell (`$PSVersionTable` exists) or if the OS is Windows (`OSTYPE` contains `msys`/`cygwin`/`win`, or `OS` env var is `Windows_NT`). When in doubt, ask the user.
+
+In all the examples below, replace `skills-hub.sh` with `skills-hub.ps1` on Windows. The command-line arguments are identical.
+
 ## How to Help Users
 
 ### Step 1: Understand What They Need
@@ -43,13 +56,17 @@ When a user mentions skills or the marketplace, identify:
 If the user wants to find skills, run the search command:
 
 ```bash
+# Linux / macOS
 ./skills/skills-hub/skills-hub.sh search "query" [--category category] [--sort rating|newest]
+
+# Windows PowerShell
+./skills/skills-hub/skills-hub.ps1 search "query" --category category --sort rating
 ```
 
 Examples:
-- User says "find me a browser automation skill" -> `./skills/skills-hub/skills-hub.sh search "browser automation"`
-- User says "what AI skills are available?" -> `./skills/skills-hub/skills-hub.sh search "ai"`
-- User says "show me the highest rated skills" -> `./skills/skills-hub/skills-hub.sh search "" --sort rating`
+- User says "find me a browser automation skill" -> `skills-hub.sh search "browser automation"`
+- User says "what AI skills are available?" -> `skills-hub.sh search "ai"`
+- User says "show me the highest rated skills" -> `skills-hub.sh search "" --sort rating`
 
 ### Step 3: Get Details Before Installing
 
@@ -110,14 +127,16 @@ For general platform overview:
 
 ## Command Reference
 
+All commands are identical across both scripts. Use `skills-hub.sh` on Linux/macOS or `skills-hub.ps1` on Windows.
+
 | Command | Description |
 |---------|-------------|
-| `skills-hub.sh search "query"` | Search skills by keyword, supports `--category`, `--sort`, `--page`, `--per-page` |
-| `skills-hub.sh info <slug>` | Get full skill details including README |
-| `skills-hub.sh install <slug>` | Download and extract skill to local directory, supports `--dir` |
-| `skills-hub.sh publish <dir>` | Package and upload a skill directory, supports `--tenant-id` |
-| `skills-hub.sh categories` | List all categories with skill counts |
-| `skills-hub.sh stats` | Show platform-wide statistics |
+| `search "query"` | Search skills by keyword, supports `--category`, `--sort`, `--page`, `--per-page` |
+| `info <slug>` | Get full skill details including README |
+| `install <slug>` | Download and extract skill to local directory, supports `--dir` |
+| `publish <dir>` | Package and upload a skill directory, supports `--tenant-id` |
+| `categories` | List all categories with skill counts |
+| `stats` | Show platform-wide statistics |
 
 ## Common Skill Categories
 
