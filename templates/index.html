@@ -76,6 +76,84 @@
     </section>
     {{end}}
 
+    <!-- 官方推荐位：skills-hub 永久置顶 -->
+    <section class="mt-12">
+        <div class="spotlight-wrapper transition-shadow duration-300 hover:shadow-xl hover:shadow-orange-500/10">
+            <div class="spotlight-inner px-6 py-8 sm:px-10 sm:py-10">
+
+                <!-- 顶部徽章 -->
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-bold uppercase tracking-wider shadow-sm shadow-orange-500/30">
+                        <i class="fas fa-crown text-[10px]"></i> 官方推荐
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium border border-emerald-100">
+                        <i class="fas fa-check-circle text-[10px]"></i> 官方维护
+                    </span>
+                </div>
+
+                <!-- 主体：左右两栏布局 -->
+                <div class="flex flex-col lg:flex-row lg:items-center gap-8">
+                    <!-- 左侧：图标 + 信息 -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start gap-5">
+                            <!-- 大图标 + 光环 -->
+                            <div class="flex-shrink-0 w-16 h-16 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-orange-500/25 spotlight-icon-ring">
+                                <i class="fas fa-plug"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="text-2xl font-bold text-slate-900 mb-1.5">
+                                    <a href="/skill?slug=skills-hub" class="hover:text-orange-500 transition-colors">Skills Hub CLI</a>
+                                </h3>
+                                <p class="text-slate-500 text-sm sm:text-base leading-relaxed">
+                                    连接 Skills Hub 市场的官方核心技能 — 搜索、浏览、安装、发布 OpenClaw Agent 技能，一条命令搞定全部操作。
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 功能标签 -->
+                        <div class="flex flex-wrap gap-2 mt-5 ml-0 lg:ml-[84px]">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 text-xs font-medium border border-orange-100">
+                                <i class="fas fa-search text-[10px]"></i> 搜索技能
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 text-xs font-medium border border-orange-100">
+                                <i class="fas fa-download text-[10px]"></i> 一键安装
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 text-xs font-medium border border-orange-100">
+                                <i class="fas fa-cloud-upload-alt text-[10px]"></i> 发布上传
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 text-xs font-medium border border-orange-100">
+                                <i class="fas fa-th-large text-[10px]"></i> 分类浏览
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：终端命令 + 按钮 -->
+                    <div class="flex-shrink-0 w-full lg:w-auto lg:min-w-[340px]">
+                        <!-- 终端命令栏 -->
+                        <div class="command-shell rounded-xl px-5 py-4 flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3 overflow-hidden">
+                                <span class="text-emerald-400 font-mono text-sm flex-shrink-0">$</span>
+                                <code class="text-slate-300 font-mono text-sm truncate spotlight-terminal">openclaw skills install skills-hub</code>
+                            </div>
+                            <button type="button" onclick="copyInstall('skills-hub')"
+                                    class="flex-shrink-0 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-medium hover:bg-orange-600 transition-colors shadow-sm">
+                                <i class="fas fa-copy mr-1"></i>复制
+                            </button>
+                        </div>
+
+                        <!-- 查看详情按钮 -->
+                        <a href="/skill?slug=skills-hub"
+                           class="mt-4 w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-orange-500 text-white font-medium text-sm hover:bg-orange-600 shadow-md shadow-orange-500/20 transition-all group">
+                            查看详情
+                            <i class="fas fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
     <section class="mt-16">
         <div class="flex items-end justify-between mb-6 border-b border-slate-200 pb-4">
             <div>
