@@ -247,7 +247,75 @@
             </div>
             {{end}}
             {{end}}
+
+            <!-- 加载更多按钮（AJAX 追加结果） -->
+            {{with .Pagination}}
+            {{if .HasNext}}
+            <div class="mt-6 text-center" id="load-more-wrap">
+                <button type="button" id="load-more-btn" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-slate-600 hover:border-orange-200 hover:text-orange-500 transition" data-next-page="{{.NextPage}}" data-per-page="{{.PerPage}}">
+                    <i class="fas fa-arrow-down text-xs"></i> 加载更多
+                </button>
+            </div>
+            {{end}}
+            {{end}}
         </main>
     </div>
 </div>
+
+<script>
+(function() {
+    var btn = document.getElementById('load-more-btn');
+    if (!btn) return;
+
+    var grid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2');
+    if (!grid) return;
+
+    btn.addEventListener('click', function() {
+        var nextPage = parseInt(btn.dataset.nextPage);
+        var perPage = parseInt(btn.dataset.perPage);
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> 加载中...';
+
+        // 构建和当前页相同的搜索参数
+        var params = new URLSearchParams(window.location.search);
+        params.set('page', nextPage);
+        params.set('per_page', perPage);
+        params.set('format', 'json');
+
+        fetch('/search?' + params.toString(), { headers: { 'Accept': 'application/json' } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.skills || data.skills.length === 0) {
+                btn.parentElement.remove();
+                return;
+            }
+
+            // 追加卡片到 grid
+            data.skills.forEach(function(s) {
+                var card = document.createElement('article');
+                card.className = 'group bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-orange-200 transition-all duration-200 flex flex-col h-full relative';
+                var ratingHtml = s.avgRating > 0
+                    ? '<span class="inline-flex items-center gap-1 text-[11px] font-medium text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded"><i class="fas fa-star"></i> ' + s.avgRating.toFixed(1) + '</span>'
+                    : '';
+                card.innerHTML = '<div class="flex items-start gap-4 mb-3"><div class="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0"><i class="fas fa-cube"></i></div><div class="min-w-0 flex-1"><h3 class="text-base font-bold text-slate-900 truncate group-hover:text-orange-500 transition-colors"><a href="/skill?slug=' + encodeURIComponent(s.slug) + '" class="before:absolute before:inset-0">' + (s.displayName || s.slug) + '</a></h3><div class="mt-0.5 flex items-center gap-2">' + ratingHtml + '</div></div></div><p class="text-sm text-slate-500 line-clamp-2 mb-4 flex-grow">' + (s.summary || '暂无描述') + '</p>';
+                grid.appendChild(card);
+            });
+
+            // 更新按钮状态
+            var totalPages = Math.ceil(data.total / perPage);
+            if (nextPage >= totalPages) {
+                btn.parentElement.remove();
+            } else {
+                btn.dataset.nextPage = nextPage + 1;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-arrow-down text-xs"></i> 加载更多';
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-arrow-down text-xs"></i> 加载更多';
+        });
+    });
+})();
+</script>
 {{end}}
