@@ -3,6 +3,20 @@
 # 让 AI Agent 通过命令行调用 Skills Hub API
 set -euo pipefail
 
+# --- 依赖检查 ---
+check_deps() {
+    local missing=""
+    command -v curl >/dev/null 2>&1 || missing="${missing} curl"
+    command -v jq >/dev/null 2>&1   || missing="${missing} jq"
+    command -v unzip >/dev/null 2>&1 || missing="${missing} unzip"
+    if [ -n "$missing" ]; then
+        echo "错误: 缺少必要依赖:${missing}"
+        echo "请先安装: apt install${missing}  或  brew install${missing}"
+        exit 1
+    fi
+}
+check_deps
+
 # --- 配置 ---
 API_KEY="${SKILLS_HUB_API_KEY:-}"
 BASE_URL="${SKILLS_HUB_BASE_URL:-https://skills-hub.example.com}"
@@ -18,17 +32,40 @@ check_auth() {
     fi
 }
 
-# 统一的 HTTP 请求封装
+# 统一的 HTTP GET 请求，stdout 只输出 body，错误走 stderr
 api_get() {
     local path="$1"
     check_auth
-    curl -sS -f \
+
+    local http_code body
+    # 把响应体写到临时文件，http_code 拿状态码，stderr 保持独立
+    local tmp_body
+    tmp_body=$(mktemp)
+    http_code=$(curl -sS -w '%{http_code}' \
         -H "Authorization: Bearer ${API_KEY}" \
         -H "Accept: application/json" \
-        "${API_BASE}${path}" 2>&1 || {
-        echo "错误: API 请求失败 (${API_BASE}${path})"
-        exit 1
+        -o "$tmp_body" \
+        "${API_BASE}${path}" 2>/dev/null) || {
+        rm -f "$tmp_body"
+        echo "错误: 无法连接 ${API_BASE}${path} (网络错误)" >&2
+        return 1
     }
+    body=$(cat "$tmp_body")
+    rm -f "$tmp_body"
+
+    if [ "$http_code" -ge 400 ]; then
+        # 尝试从 JSON 中提取错误信息
+        local api_err
+        api_err=$(echo "$body" | jq -r '.error // empty' 2>/dev/null) || true
+        if [ -n "$api_err" ]; then
+            echo "错误: ${api_err} (HTTP ${http_code})" >&2
+        else
+            echo "错误: API 返回 HTTP ${http_code}" >&2
+        fi
+        return 1
+    fi
+
+    echo "$body"
 }
 
 # --- 搜索技能 ---
@@ -53,7 +90,7 @@ cmd_search() {
     [ -n "$sort" ]     && params="${params}&sort=${sort}"
 
     local result
-    result=$(api_get "/search${params}")
+    result=$(api_get "/search${params}") || exit 1
 
     local total
     total=$(echo "$result" | jq -r '.total // 0')
@@ -75,7 +112,7 @@ cmd_info() {
     fi
 
     local result
-    result=$(api_get "/skills/${slug}")
+    result=$(api_get "/skills/${slug}") || exit 1
 
     echo "$result" | jq -r '
         "名称: \(.name)",
@@ -113,42 +150,51 @@ cmd_install() {
 
     check_auth
 
-    # 先拿详情确认 skill 存在
+    # 先拿详情确认 skill 存在，同时拿到 id（下载接口用 id 不是 slug）
     local detail
-    detail=$(api_get "/skills/${slug}" 2>/dev/null) || {
-        echo "错误: 技能 '${slug}' 不存在"
+    if ! detail=$(api_get "/skills/${slug}"); then
+        echo "错误: 技能 '${slug}' 不存在或无权访问"
         exit 1
-    }
-    local skill_name
+    fi
+    local skill_name skill_id
     skill_name=$(echo "$detail" | jq -r '.name // ""')
-    local skill_id
     skill_id=$(echo "$detail" | jq -r '.id // 0')
+
+    if [ "$skill_id" = "0" ] || [ -z "$skill_id" ]; then
+        echo "错误: 无法获取技能 ID"
+        exit 1
+    fi
 
     echo "正在下载: ${skill_name} (${slug})..."
 
-    # 创建目标目录
     mkdir -p "${target_dir}"
 
-    # 下载 ZIP
-    local tmp_zip
+    # 下载 ZIP，错误信息走 stderr
+    local tmp_zip http_code
     tmp_zip=$(mktemp /tmp/skill-XXXXXX.zip)
-    curl -sS -f \
+    http_code=$(curl -sS -w '%{http_code}' \
         -H "Authorization: Bearer ${API_KEY}" \
         -o "$tmp_zip" \
-        "${API_BASE}/download/${skill_id}" 2>&1 || {
+        "${API_BASE}/download/${skill_id}" 2>/dev/null) || {
         rm -f "$tmp_zip"
-        echo "错误: 下载失败"
+        echo "错误: 下载失败 (网络错误)"
         exit 1
     }
+
+    if [ "$http_code" -ge 400 ]; then
+        rm -f "$tmp_zip"
+        echo "错误: 下载失败 (HTTP ${http_code})"
+        exit 1
+    fi
 
     # 解压到目标目录
     local extract_dir="${target_dir}/${slug}"
     mkdir -p "$extract_dir"
-    unzip -o -q "$tmp_zip" -d "$extract_dir" 2>/dev/null || {
+    if ! unzip -o -q "$tmp_zip" -d "$extract_dir" 2>/dev/null; then
         rm -f "$tmp_zip"
         echo "错误: 解压失败，文件可能不是有效的 ZIP"
         exit 1
-    }
+    fi
     rm -f "$tmp_zip"
 
     echo "已安装到: ${extract_dir}"
@@ -190,11 +236,11 @@ cmd_publish() {
     # 打包成 ZIP
     local tmp_zip
     tmp_zip=$(mktemp /tmp/skill-upload-XXXXXX.zip)
-    (cd "$src_dir" && zip -r -q "$tmp_zip" . -x '*.git*' -x '*__pycache__*' -x '*.DS_Store') || {
+    if ! (cd "$src_dir" && zip -r -q "$tmp_zip" . -x '*.git*' -x '*__pycache__*' -x '*.DS_Store'); then
         rm -f "$tmp_zip"
         echo "错误: 打包失败"
         exit 1
-    }
+    fi
 
     echo "正在上传..."
 
@@ -202,21 +248,31 @@ cmd_publish() {
     local upload_url="${API_BASE}/upload"
     [ -n "$tenant_id" ] && upload_url="${upload_url}?tenant_id=${tenant_id}"
 
-    local result
-    result=$(curl -sS -f \
+    # 上传，先拿 http_code 和 body 分开处理
+    local tmp_resp http_code result
+    tmp_resp=$(mktemp)
+    http_code=$(curl -sS -w '%{http_code}' \
         -H "Authorization: Bearer ${API_KEY}" \
         -F "zipfile=@${tmp_zip};filename=skill.zip" \
-        "$upload_url" 2>&1) || {
-        rm -f "$tmp_zip"
-        echo "错误: 上传失败"
-        echo "$result"
+        -o "$tmp_resp" \
+        "$upload_url" 2>/dev/null) || {
+        rm -f "$tmp_zip" "$tmp_resp"
+        echo "错误: 上传失败 (网络错误)"
         exit 1
     }
-    rm -f "$tmp_zip"
+    result=$(cat "$tmp_resp")
+    rm -f "$tmp_zip" "$tmp_resp"
 
-    local new_slug
+    if [ "$http_code" -ge 400 ]; then
+        local api_err
+        api_err=$(echo "$result" | jq -r '.error // empty' 2>/dev/null) || true
+        echo "错误: 上传失败 (HTTP ${http_code})"
+        [ -n "$api_err" ] && echo "  原因: ${api_err}"
+        exit 1
+    fi
+
+    local new_slug review_status
     new_slug=$(echo "$result" | jq -r '.slug // "unknown"')
-    local review_status
     review_status=$(echo "$result" | jq -r '.review_status // "unknown"')
 
     echo "上传成功!"
@@ -239,7 +295,7 @@ cmd_categories() {
     [ -n "$tenant_id" ] && params="?tenant_id=${tenant_id}"
 
     local result
-    result=$(api_get "/categories${params}")
+    result=$(api_get "/categories${params}") || exit 1
 
     echo "技能分类:"
     echo ""
@@ -249,7 +305,7 @@ cmd_categories() {
 # --- 平台统计 ---
 cmd_stats() {
     local result
-    result=$(api_get "/stats")
+    result=$(api_get "/stats") || exit 1
 
     echo "Skills Hub 平台统计:"
     echo ""
@@ -262,11 +318,11 @@ cmd_stats() {
     '
 }
 
-# --- URL 编码 ---
+# --- URL 编码（安全版，不拼接用户输入到代码字符串） ---
 urlencode() {
-    local string="$1"
-    python3 -c "import urllib.parse; print(urllib.parse.quote('$string'))" 2>/dev/null \
-        || printf '%s' "$string" | curl -Gso /dev/null -w '%{url_effective}' --data-urlencode @- '' 2>/dev/null | sed 's/^.*?//'
+    python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$1" 2>/dev/null \
+        || printf '%s' "$1" | jq -sRr @uri 2>/dev/null \
+        || printf '%s' "$1"
 }
 
 # --- 帮助信息 ---

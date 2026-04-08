@@ -74,7 +74,7 @@ If the user confirms they want to install a skill:
 ./skills/skills-hub/skills-hub.sh install <slug> [--dir ./skills]
 ```
 
-This downloads the skill ZIP and extracts it to the target directory. The default directory is `./skills`.
+This internally fetches the skill detail by slug (to get the numeric ID), then downloads the ZIP via `/download/{id}`, and extracts it to the target directory. The default directory is `./skills`. You only need to pass the slug — the script handles the rest.
 
 After installation, tell the user where the skill was installed and list the key files.
 
