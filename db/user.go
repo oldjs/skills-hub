@@ -12,7 +12,7 @@ func GetUserByEmail(email string) (*models.User, error) {
 	email = security.EscapePlainText(email)
 
 	row := GetDB().QueryRow(`
-		SELECT id, email, display_name, status, is_platform_admin, is_sub_admin, last_tenant_id, last_login_at, created_at, updated_at
+		SELECT id, email, display_name, COALESCE(bio, ''), status, is_platform_admin, is_sub_admin, last_tenant_id, last_login_at, created_at, updated_at
 		FROM users WHERE email = ?
 	`, email)
 
@@ -21,7 +21,7 @@ func GetUserByEmail(email string) (*models.User, error) {
 	var isSubAdmin int
 	var lastTenantID sql.NullInt64
 	var lastLoginAt sql.NullTime
-	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.Status, &isPlatformAdmin, &isSubAdmin, &lastTenantID, &lastLoginAt, &user.CreatedAt, &user.UpdatedAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.Bio, &user.Status, &isPlatformAdmin, &isSubAdmin, &lastTenantID, &lastLoginAt, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -80,7 +80,7 @@ func CreateUser(email, displayName string, isPlatformAdmin bool) (*models.User, 
 
 func GetUserByID(userID int64) (*models.User, error) {
 	row := GetDB().QueryRow(`
-		SELECT id, email, display_name, status, is_platform_admin, is_sub_admin, last_tenant_id, last_login_at, created_at, updated_at
+		SELECT id, email, display_name, COALESCE(bio, ''), status, is_platform_admin, is_sub_admin, last_tenant_id, last_login_at, created_at, updated_at
 		FROM users WHERE id = ?
 	`, userID)
 
@@ -89,7 +89,7 @@ func GetUserByID(userID int64) (*models.User, error) {
 	var isSubAdmin int
 	var lastTenantID sql.NullInt64
 	var lastLoginAt sql.NullTime
-	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.Status, &isPlatformAdmin, &isSubAdmin, &lastTenantID, &lastLoginAt, &user.CreatedAt, &user.UpdatedAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.Bio, &user.Status, &isPlatformAdmin, &isSubAdmin, &lastTenantID, &lastLoginAt, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}

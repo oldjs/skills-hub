@@ -212,7 +212,7 @@
                                     {{if .DisplayName}}{{firstChar .DisplayName}}{{else}}?{{end}}
                                 </div>
                                     <div>
-                                        <span class="text-sm font-medium text-slate-700">{{if .DisplayName}}{{.DisplayName}}{{else}}匿名用户{{end}}</span>
+                                        <a href="/user?id={{.UserID}}" class="text-sm font-medium text-slate-700 hover:text-orange-500 transition">{{if .DisplayName}}{{.DisplayName}}{{else}}匿名用户{{end}}</a>
                                         <span class="text-xs text-slate-400 ml-2">{{maskEmail .Email}}</span>
                                     </div>
                                 </div>

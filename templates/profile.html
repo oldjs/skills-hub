@@ -1,0 +1,117 @@
+{{define "title"}}{{if .ProfileUser}}{{.ProfileUser.DisplayName}}{{else}}用户主页{{end}} - Skills Hub{{end}}
+
+{{define "content"}}
+{{if .ProfileUser}}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+    <nav class="mb-6">
+        <ol class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            <li><a href="/" class="hover:text-slate-700">首页</a></li>
+            <li><i class="fas fa-chevron-right text-[10px]"></i></li>
+            <li class="text-slate-900 font-medium">{{.ProfileUser.DisplayName}}</li>
+        </ol>
+    </nav>
+
+    <!-- 头部信息 -->
+    <section class="rounded-[2rem] border border-slate-200 bg-white overflow-hidden">
+        <div class="relative border-b border-slate-100 px-6 py-8 sm:px-8">
+            <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-yellow-500/10"></div>
+            <div class="relative flex flex-col sm:flex-row items-start gap-5">
+                <!-- 头像占位（首字母圆形） -->
+                <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-100 to-amber-100 text-orange-600 text-3xl font-bold shadow-inner">
+                    {{firstChar .ProfileUser.DisplayName}}
+                </div>
+                <div class="flex-1">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">{{.ProfileUser.DisplayName}}</h1>
+                    {{if .ProfileUser.Bio}}
+                    <p class="mt-2 text-sm text-slate-500 leading-relaxed">{{.ProfileUser.Bio}}</p>
+                    {{end}}
+                    <div class="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-400">
+                        <span><i class="fas fa-calendar-alt mr-1"></i>{{formatDate .ProfileUser.CreatedAt}} 加入</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计数字 -->
+        <div class="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50">
+            <div class="px-6 py-4 text-center">
+                <div class="text-2xl font-bold text-slate-800">{{.ProfileUser.SkillCount}}</div>
+                <div class="text-xs text-slate-400 mt-1">上传技能</div>
+            </div>
+            <div class="px-6 py-4 text-center">
+                <div class="text-2xl font-bold text-slate-800">{{.ProfileUser.RatingCount}}</div>
+                <div class="text-xs text-slate-400 mt-1">评分</div>
+            </div>
+            <div class="px-6 py-4 text-center">
+                <div class="text-2xl font-bold text-slate-800">{{.ProfileUser.CommentCount}}</div>
+                <div class="text-xs text-slate-400 mt-1">评论</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tab 切换 -->
+    <div class="mt-8 flex items-center gap-2 border-b border-slate-200 pb-0">
+        <a href="/user?id={{.ProfileUser.ID}}&tab=ratings" class="px-4 py-3 text-sm font-medium border-b-2 transition {{if eq .ProfileTab "ratings"}}border-orange-500 text-orange-600{{else}}border-transparent text-slate-500 hover:text-slate-700{{end}}">
+            <i class="fas fa-star mr-1.5 text-xs"></i>评分记录
+        </a>
+        <a href="/user?id={{.ProfileUser.ID}}&tab=comments" class="px-4 py-3 text-sm font-medium border-b-2 transition {{if eq .ProfileTab "comments"}}border-orange-500 text-orange-600{{else}}border-transparent text-slate-500 hover:text-slate-700{{end}}">
+            <i class="fas fa-comment mr-1.5 text-xs"></i>评论记录
+        </a>
+    </div>
+
+    <!-- Tab 内容 -->
+    <div class="mt-6">
+        {{if eq .ProfileTab "ratings"}}
+        <!-- 评分记录 -->
+        <div class="space-y-3">
+            {{range .ProfileRatings}}
+            <article class="rounded-xl border border-slate-200 bg-white p-4 flex items-center justify-between gap-4">
+                <div class="min-w-0 flex-1">
+                    <a href="/skill?slug={{.SkillSlug}}" class="text-sm font-medium text-slate-800 hover:text-orange-500 transition truncate block">{{.SkillName}}</a>
+                    <div class="text-xs text-slate-400 mt-1">{{formatTime .CreatedAt}}</div>
+                </div>
+                <div class="flex items-center gap-0.5 shrink-0">
+                    {{$score := .Score}}
+                    {{range seq 5}}
+                    {{if le . $score}}
+                    <i class="fas fa-star text-amber-400 text-xs"></i>
+                    {{else}}
+                    <i class="far fa-star text-slate-300 text-xs"></i>
+                    {{end}}
+                    {{end}}
+                </div>
+            </article>
+            {{else}}
+            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">暂无评分记录。</div>
+            {{end}}
+        </div>
+
+        {{else if eq .ProfileTab "comments"}}
+        <!-- 评论记录 -->
+        <div class="space-y-3">
+            {{range .ProfileComments}}
+            <article class="rounded-xl border border-slate-200 bg-white p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <a href="/skill?slug={{.SkillSlug}}" class="text-sm font-medium text-slate-800 hover:text-orange-500 transition">{{.SkillName}}</a>
+                    <span class="text-xs text-slate-400 shrink-0">{{formatTime .CreatedAt}}</span>
+                </div>
+                <p class="text-sm text-slate-600 leading-relaxed">{{.Content}}</p>
+            </article>
+            {{else}}
+            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">暂无评论记录。</div>
+            {{end}}
+        </div>
+        {{end}}
+    </div>
+</div>
+{{else}}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+    <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-user text-gray-300 text-2xl"></i>
+    </div>
+    <h2 class="text-xl font-medium text-gray-600 mb-2">用户不存在</h2>
+    <p class="text-gray-400 mb-6">该用户可能已被停用或不存在</p>
+    <a href="/" class="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">返回首页</a>
+</div>
+{{end}}
+{{end}}

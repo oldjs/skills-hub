@@ -31,7 +31,7 @@ func InitTemplates(templateDir string) {
 	}
 	basePath := filepath.Join(templateDir, "layout.html")
 	adminShellPath := filepath.Join(templateDir, "admin_shell.html")
-	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "account.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
+	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "account.html", "profile.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
 
 	for _, page := range pages {
 		files := []string{basePath, filepath.Join(templateDir, page)}
@@ -175,6 +175,16 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	if data.GeneratedAPIKey != "" {
 		target["GeneratedAPIKey"] = data.GeneratedAPIKey
 	}
+	if data.ProfileUser != nil {
+		target["ProfileUser"] = data.ProfileUser
+	}
+	target["ProfileTab"] = data.ProfileTab
+	if data.ProfileRatings != nil {
+		target["ProfileRatings"] = data.ProfileRatings
+	}
+	if data.ProfileComments != nil {
+		target["ProfileComments"] = data.ProfileComments
+	}
 }
 
 type PageData struct {
@@ -208,6 +218,11 @@ type PageData struct {
 	AdminSkill      *models.AdminSkill
 	APIKeys         []models.APIKey
 	GeneratedAPIKey string
+	// Profile 页
+	ProfileUser     *models.UserProfile
+	ProfileTab      string
+	ProfileRatings  []models.UserRatingItem
+	ProfileComments []models.UserCommentItem
 }
 
 type PaginationData struct {

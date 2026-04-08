@@ -55,6 +55,10 @@ func Init(dbPath string) error {
 			return
 		}
 
+		if err = migrateAddUserProfileColumns(); err != nil {
+			return
+		}
+
 		if err = createIndexes(); err != nil {
 			return
 		}
@@ -243,6 +247,9 @@ func createIndexes() error {
 		`CREATE INDEX IF NOT EXISTS idx_admin_action_logs_admin_user_id ON admin_action_logs(admin_user_id, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_api_keys_user_id_created_at ON api_keys(user_id, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_api_keys_revoked_at ON api_keys(revoked_at)`,
+		// Profile 页用的索引
+		`CREATE INDEX IF NOT EXISTS idx_skill_comments_user_id ON skill_comments(user_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_skill_ratings_user_created ON skill_ratings(user_id, created_at DESC)`,
 	}
 
 	for _, statement := range statements {
@@ -492,6 +499,21 @@ func migrateAddSubAdminColumn() error {
 
 	if _, err := database.Exec(`ALTER TABLE users ADD COLUMN is_sub_admin INTEGER NOT NULL DEFAULT 0`); err != nil {
 		log.Printf("添加 is_sub_admin 列失败（可能已存在）: %v", err)
+	}
+	return nil
+}
+
+// 给 users 表加 bio 字段（个人简介）
+func migrateAddUserProfileColumns() error {
+	hasBio, err := tableHasColumn("users", "bio")
+	if err != nil {
+		return err
+	}
+	if hasBio {
+		return nil
+	}
+	if _, err := database.Exec(`ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''`); err != nil {
+		log.Printf("添加 bio 列失败（可能已存在）: %v", err)
 	}
 	return nil
 }
