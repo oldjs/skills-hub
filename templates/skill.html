@@ -306,6 +306,10 @@
                             <span>浏览相似分类</span>
                             <i class="fas fa-arrow-right text-sm"></i>
                         </a>
+                        <button type="button" id="bookmark-btn" onclick="toggleBookmark({{.Skill.ID}})" class="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 transition {{if .IsBookmarked}}border-orange-200 bg-orange-50 text-orange-600{{else}}text-slate-700 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600{{end}}">
+                            <span id="bookmark-text">{{if .IsBookmarked}}已收藏{{else}}收藏{{end}}</span>
+                            <i id="bookmark-icon" class="{{if .IsBookmarked}}fas{{else}}far{{end}} fa-bookmark text-sm"></i>
+                        </button>
                     </div>
                 </section>
 
@@ -373,6 +377,34 @@
         </a>
     </div>
 </div>
+
+<!-- 收藏切换 -->
+<script>
+function toggleBookmark(skillId) {
+    var formData = new FormData();
+    formData.append('skill_id', skillId);
+    formData.append('csrf_token', csrfToken);
+    fetch('/api/bookmark', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var btn = document.getElementById('bookmark-btn');
+        var text = document.getElementById('bookmark-text');
+        var icon = document.getElementById('bookmark-icon');
+        if (data.bookmarked) {
+            btn.classList.add('border-orange-200', 'bg-orange-50', 'text-orange-600');
+            text.textContent = '已收藏';
+            icon.className = 'fas fa-bookmark text-sm';
+            showToast('已收藏');
+        } else {
+            btn.classList.remove('border-orange-200', 'bg-orange-50', 'text-orange-600');
+            text.textContent = '收藏';
+            icon.className = 'far fa-bookmark text-sm';
+            showToast('已取消收藏');
+        }
+    })
+    .catch(function() { showToast('操作失败'); });
+}
+</script>
 
 <!-- 回复表单切换 -->
 <script>

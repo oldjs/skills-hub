@@ -93,6 +93,9 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 查收藏状态
+	isBookmarked := db.IsBookmarked(sess.UserID, skill.ID, sess.CurrentTenantID)
+
 	// 拉相关技能推荐
 	relatedSkills, err := db.GetRelatedSkills(sess.CurrentTenantID, skill.ID, skill.Categories, 6)
 	if err != nil {
@@ -124,6 +127,7 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		CurrentPage:     "skill",
 		Comments:        comments,
 		UserRating:      userRating,
+		IsBookmarked:    isBookmarked,
 		RelatedSkills:   relatedSkills,
 		Error:           errMsg,
 		Info:            pageInfo,

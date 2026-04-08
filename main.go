@@ -99,6 +99,8 @@ func setupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/account/profile", handlers.RequireAuth(handlers.AccountProfileUpdateHandler))
 	mux.HandleFunc("/upload", handlers.RequireAuth(handlers.UploadHandler))
 	mux.HandleFunc("/api/upload/preview", handlers.RequireAuth(handlers.UploadPreviewHandler))
+	mux.HandleFunc("/api/bookmark", handlers.RequireAuth(handlers.BookmarkToggleHandler))
+	mux.HandleFunc("/account/bookmarks", handlers.RequireAuth(handlers.AccountBookmarksHandler))
 	mux.HandleFunc("/api/rate", handlers.RequireAuth(handlers.RateSkillHandler))
 	mux.HandleFunc("/api/comment", handlers.RequireAuth(handlers.CommentSkillHandler))
 	mux.HandleFunc("/api/markdown/preview", handlers.RequireAuth(handlers.MarkdownPreviewHandler))

@@ -31,7 +31,7 @@ func InitTemplates(templateDir string) {
 	}
 	basePath := filepath.Join(templateDir, "layout.html")
 	adminShellPath := filepath.Join(templateDir, "admin_shell.html")
-	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "account.html", "profile.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
+	pages := []string{"index.html", "search.html", "skill.html", "login.html", "register.html", "account.html", "profile.html", "bookmarks.html", "admin_dashboard.html", "admin_skills.html", "admin_skill_detail.html", "admin_comments.html", "admin_users.html", "admin_tenants.html", "admin_tenant_detail.html", "upload.html"}
 
 	for _, page := range pages {
 		files := []string{basePath, filepath.Join(templateDir, page)}
@@ -134,6 +134,7 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	target["Skill"] = data.Skill
 	target["Comments"] = data.Comments
 	target["UserRating"] = data.UserRating
+	target["IsBookmarked"] = data.IsBookmarked
 	target["MetaDescription"] = data.MetaDescription
 	target["MetaKeywords"] = data.MetaKeywords
 	target["CanonicalURL"] = data.CanonicalURL
@@ -212,6 +213,7 @@ type PageData struct {
 	Skill           *models.Skill
 	Comments        []models.SkillComment // 评论列表
 	UserRating      int                   // 当前用户的评分
+	IsBookmarked    bool                  // 当前用户是否收藏了这个技能
 	RelatedSkills   []models.Skill        // 技能详情页的推荐技能
 	TotalSkills     int
 	CategoryCount   int
