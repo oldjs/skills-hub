@@ -84,6 +84,13 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 拉相关技能推荐
+	relatedSkills, err := db.GetRelatedSkills(sess.CurrentTenantID, skill.ID, skill.Categories, 6)
+	if err != nil {
+		log.Printf("related skills load failed: %v", err)
+		relatedSkills = []models.Skill{}
+	}
+
 	// 检查是否有来自评论验证码失败的错误
 	errParam := r.URL.Query().Get("error")
 	errMsg := ""
@@ -92,14 +99,15 @@ func SkillHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := PageData{
-		Title:       skill.DisplayName + " - Skills Hub",
-		Skill:       skill,
-		Categories:  categories,
-		CurrentPage: "skill",
-		Comments:    comments,
-		UserRating:  userRating,
-		Error:       errMsg,
-		Info:        pageInfo,
+		Title:         skill.DisplayName + " - Skills Hub",
+		Skill:         skill,
+		Categories:    categories,
+		CurrentPage:   "skill",
+		Comments:      comments,
+		UserRating:    userRating,
+		RelatedSkills: relatedSkills,
+		Error:         errMsg,
+		Info:          pageInfo,
 	}
 
 	RenderTemplate(w, r, "skill.html", data)

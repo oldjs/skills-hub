@@ -130,6 +130,9 @@ func mergePageData(target map[string]interface{}, data PageData) {
 	target["Skill"] = data.Skill
 	target["Comments"] = data.Comments
 	target["UserRating"] = data.UserRating
+	if data.RelatedSkills != nil {
+		target["RelatedSkills"] = data.RelatedSkills
+	}
 	target["TotalSkills"] = data.TotalSkills
 	target["CategoryCount"] = data.CategoryCount
 	target["Error"] = data.Error
@@ -187,6 +190,7 @@ type PageData struct {
 	Skill           *models.Skill
 	Comments        []models.SkillComment // 评论列表
 	UserRating      int                   // 当前用户的评分
+	RelatedSkills   []models.Skill        // 技能详情页的推荐技能
 	TotalSkills     int
 	CategoryCount   int
 	Error           string
