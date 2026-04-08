@@ -33,7 +33,34 @@
     </div>
 </section>
 
-<div class="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+<!-- 趋势图 -->
+<div class="mt-6 grid gap-6 xl:grid-cols-2">
+    <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-slate-900 mb-4">30 天注册趋势</h3>
+        <canvas id="reg-chart" height="160"></canvas>
+    </section>
+    <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-slate-900 mb-4">30 天技能增长</h3>
+        <canvas id="skill-chart" height="160"></canvas>
+    </section>
+</div>
+
+<!-- 活跃用户 + 待审核 + 日志 -->
+<div class="mt-6 grid gap-6 xl:grid-cols-[0.4fr_0.6fr_1fr]">
+    {{if .ActiveUsers}}
+    <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-slate-900 mb-4">7 日活跃用户</h3>
+        <div class="space-y-3">
+            {{range .ActiveUsers}}
+            <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-700 truncate">{{.DisplayName}}</span>
+                <span class="shrink-0 rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-600">{{.ActionCount}}</span>
+            </div>
+            {{end}}
+        </div>
+    </section>
+    {{end}}
+
     <section class="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm">
         <div class="mb-5 flex items-center justify-between">
             <h3 class="text-lg font-semibold text-slate-900">待审核 Skills</h3>
@@ -82,4 +109,45 @@
         </div>
     </section>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    var regData = {{.RegChartData}};
+    var skillData = {{.SkillChartData}};
+
+    function renderChart(id, data, color) {
+        if (!data || !data.length) return;
+        var ctx = document.getElementById(id);
+        if (!ctx) return;
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(function(d) { return d.date.slice(5); }),
+                datasets: [{
+                    data: data.map(function(d) { return d.count; }),
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 7, font: { size: 10 } } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } }
+                },
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    renderChart('reg-chart', regData, '#f97316');
+    renderChart('skill-chart', skillData, '#10b981');
+})();
+</script>
 {{end}}
