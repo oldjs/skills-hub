@@ -7,18 +7,18 @@
         <section class="hidden lg:block">
             <div class="max-w-xl">
                 <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-1.5 text-sm font-medium text-orange-600">邮箱验证码登录</div>
-                <h2 class="text-5xl font-bold tracking-tight text-slate-900 leading-tight">登录后只会看到自己租户下的 Skills 数据</h2>
-                <p class="mt-5 text-lg leading-8 text-slate-500">验证码、CSRF 和 session 都按 ticket-system 的风格放进 Redis，Skills Hub 继续保持阿里云橙色视觉。</p>
+                <h2 class="text-5xl font-bold tracking-tight text-slate-900 leading-tight">探索全球开发者构建的优质 AI Skills</h2>
+                <p class="mt-5 text-lg leading-8 text-slate-500">登录即可上传、评分、收藏技能，打造属于你的智能体能力网络。</p>
                 <div class="mt-8 grid gap-4 sm:grid-cols-2">
                     <div class="rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-sm">
-                        <div class="text-sm font-medium text-slate-400">登录态</div>
-                        <div class="mt-2 text-2xl font-semibold text-slate-900">Redis Session</div>
-                        <p class="mt-2 text-sm text-slate-500">Cookie 只存 token，服务端保存会话内容。</p>
+                        <div class="text-sm font-medium text-slate-400">搜索</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900">全文检索</div>
+                        <p class="mt-2 text-sm text-slate-500">按名称、分类、评分快速找到需要的技能。</p>
                     </div>
                     <div class="rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-sm">
-                        <div class="text-sm font-medium text-slate-400">数据访问</div>
-                        <div class="mt-2 text-2xl font-semibold text-slate-900">租户隔离</div>
-                        <p class="mt-2 text-sm text-slate-500">所有页面和搜索接口都按当前租户过滤。</p>
+                        <div class="text-sm font-medium text-slate-400">集成</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900">一键安装</div>
+                        <p class="mt-2 text-sm text-slate-500">通过 CLI 或 API 快速将技能集成到你的工作流。</p>
                     </div>
                 </div>
             </div>
@@ -30,7 +30,7 @@
                     <i class="fas fa-envelope-open-text text-lg"></i>
                 </div>
                 <h1 class="mt-5 text-2xl font-bold text-slate-900">登录 Skills Hub</h1>
-                <p class="mt-2 text-sm text-slate-500">输入邮箱并完成验证码校验后进入你的租户工作区。</p>
+                <p class="mt-2 text-sm text-slate-500">输入邮箱并完成验证码校验即可进入。</p>
             </div>
 
             <div id="auth-message" class="mb-4 rounded-2xl border px-4 py-3 text-sm {{if .Error}}border-red-200 bg-red-50 text-red-600{{else if .Info}}border-emerald-200 bg-emerald-50 text-emerald-600{{else}}hidden{{end}}">{{if .Error}}{{.Error}}{{else}}{{.Info}}{{end}}</div>

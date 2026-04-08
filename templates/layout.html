@@ -177,20 +177,20 @@
                         {{if .CurrentTenant}}
                         <div class="text-[11px] text-slate-400">{{.CurrentTenant.TenantName}}</div>
                         {{else}}
-                        <div class="text-[11px] text-slate-400">OpenClaw 租户技能中心</div>
+                        <div class="text-[11px] text-slate-400">OpenClaw 技能中心</div>
                         {{end}}
                     </div>
                 </a>
 
                 <div class="hidden items-center gap-6 md:flex">
-                    {{if .IsLoggedIn}}
-                    <a href="/" class="text-sm font-medium transition {{if eq .CurrentPage "home"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">总览</a>
+                    <a href="/" class="text-sm font-medium transition {{if eq .CurrentPage "home"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">首页</a>
                     <a href="/search" class="text-sm font-medium transition {{if eq .CurrentPage "search"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">探索</a>
+                    <a href="/leaderboard" class="text-sm font-medium transition {{if eq .CurrentPage "leaderboard"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">排行榜</a>
+                    {{if .IsLoggedIn}}
                     <a href="/upload" class="text-sm font-medium transition {{if eq .CurrentPage "upload"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">上传</a>
                     <a href="/account" class="text-sm font-medium transition {{if eq .CurrentPage "account"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">个人中心</a>
-                    <a href="/leaderboard" class="text-sm font-medium transition {{if eq .CurrentPage "leaderboard"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">排行榜</a>
                     {{if .IsAdmin}}
-                    <a href="/admin" class="text-sm font-medium transition {{if eq .CurrentPage "admin"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">管理员后台</a>
+                    <a href="/admin" class="text-sm font-medium transition {{if eq .CurrentPage "admin"}}text-orange-500{{else}}text-slate-600 hover:text-orange-500{{end}}">管理后台</a>
                     {{end}}
                     {{end}}
                 </div>
@@ -200,7 +200,7 @@
                     {{if .TenantOptions}}
                     <form action="/switch-tenant" method="POST" class="flex items-center gap-2">
                         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-                        <label class="text-xs text-slate-400">当前租户</label>
+                        <label class="text-xs text-slate-400">工作区</label>
                         <select name="tenant_id" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700" onchange="this.form.submit()">
                             {{range .TenantOptions}}
                             <option value="{{.TenantID}}" {{if and $.CurrentTenant (eq $.CurrentTenant.TenantID .TenantID)}}selected{{end}}>{{.TenantName}}</option>
@@ -247,18 +247,19 @@
 
         <div class="hidden border-t border-gray-100 bg-white/95 md:hidden" id="mobile-menu">
             <div class="space-y-2 px-4 py-3">
-                {{if .IsLoggedIn}}
                 <a href="/" class="block rounded-xl px-3 py-2 hover:bg-gray-100">首页</a>
-                <a href="/search" class="block rounded-xl px-3 py-2 hover:bg-gray-100">搜索</a>
+                <a href="/search" class="block rounded-xl px-3 py-2 hover:bg-gray-100">探索</a>
+                <a href="/leaderboard" class="block rounded-xl px-3 py-2 hover:bg-gray-100">排行榜</a>
+                {{if .IsLoggedIn}}
                 <a href="/upload" class="block rounded-xl px-3 py-2 hover:bg-gray-100">上传</a>
                 <a href="/account" class="block rounded-xl px-3 py-2 hover:bg-gray-100">个人中心</a>
                 {{if .IsAdmin}}
-                <a href="/admin" class="block rounded-xl px-3 py-2 hover:bg-gray-100">管理员后台</a>
+                <a href="/admin" class="block rounded-xl px-3 py-2 hover:bg-gray-100">管理后台</a>
                 {{end}}
                 {{if .TenantOptions}}
                 <form action="/switch-tenant" method="POST" class="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-                    <div class="text-xs text-slate-400">切换租户</div>
+                    <div class="text-xs text-slate-400">切换工作区</div>
                     <select name="tenant_id" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
                         {{range .TenantOptions}}
                         <option value="{{.TenantID}}" {{if and $.CurrentTenant (eq $.CurrentTenant.TenantID .TenantID)}}selected{{end}}>{{.TenantName}}</option>
@@ -294,11 +295,9 @@
                     <div class="flex h-6 w-6 items-center justify-center rounded bg-slate-200 text-slate-500">
                         <i class="fas fa-layer-group text-xs"></i>
                     </div>
-                    <span>Skills Hub | OpenClaw 多租户技能中心</span>
+                    <span>Skills Hub | OpenClaw 技能中心</span>
                 </div>
                 <div class="flex items-center gap-4">
-                    <span>阿里云橙色主题</span>
-                    <span class="hidden md:inline">·</span>
                     <span>数据源: <a href="https://clawhub.ai" target="_blank" rel="noopener noreferrer" class="text-slate-500 transition hover:text-orange-500">ClawHub</a></span>
                 </div>
             </div>
